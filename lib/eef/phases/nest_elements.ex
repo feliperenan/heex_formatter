@@ -15,8 +15,7 @@ defmodule Eef.Phases.NestElements do
     acc |> Enum.reverse()
   end
 
-  def combine([{:tag_open, name, attrs, meta} | rest], _search, acc) do
-    # combine_element(nodes, name)
+  def combine([{:tag_open, name, attrs, meta} | rest], search, acc) do
     if has_matching_close?(rest, name) do
       case combine(rest, name) do
         [] ->
@@ -28,13 +27,13 @@ defmodule Eef.Phases.NestElements do
           ])
 
         {children, remaining} ->
-          combine(remaining, name, [
+          combine(remaining, nil, [
             {:element, name, attrs, children, meta} | acc
           ])
       end
     else
       # Inbalanced or functional component
-      combine(rest, nil, [{:element, name, attrs, [], meta} | acc])
+      combine(rest, search, [{:element, name, attrs, [], meta} | acc])
     end
   end
 
