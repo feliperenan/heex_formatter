@@ -64,6 +64,9 @@ defmodule Eef.Phases.Render do
         {attr, {:string, value, _meta}}, acc ->
           ~s(#{acc}#{attr}="#{value}" )
 
+        {attr, {:expr, value, _meta}}, acc ->
+          ~s(#{acc}#{attr}={#{value}} )
+
         {attr, {_, value, _meta}}, acc ->
           ~s(#{acc}#{attr}=#{value} )
       end)
@@ -95,10 +98,13 @@ defmodule Eef.Phases.Render do
       attrs_with_new_lines =
         Enum.reduce(attrs, "", fn
           {attr, {:string, value, _meta}}, acc ->
-            acc <> "#{attrs_indentation}" <> ~s(#{attr}="#{value}"\n)
+            "#{acc}#{attrs_indentation}" <> ~s(#{attr}="#{value}"\n)
+
+          {attr, {:expr, value, _meta}}, acc ->
+            "#{acc}#{attrs_indentation}" <> ~s(#{attr}={#{value}}\n)
 
           {attr, {_, value, _meta}}, acc ->
-            acc <> "#{attrs_indentation}" <> ~s(#{attr}=#{value}\n)
+            "#{acc}#{attrs_indentation}" <> ~s(#{attr}=#{value}\n)
         end)
 
       tag_suffix = "#{indentation}/>\n"

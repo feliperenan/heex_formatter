@@ -83,6 +83,25 @@ defmodule EefTest do
       />
       """
     )
+
+    assert_formatter_output(
+      """
+      <Component
+          foo={MyappWeb.User.FormComponent}
+        bar="..............."
+        baz="............"
+                  qux="...................."
+      />
+      """,
+      """
+      <Component
+        foo={MyappWeb.User.FormComponent}
+        bar="..............."
+        baz="............"
+        qux="...................."
+      />
+      """
+    )
   end
 
   test "single line inputs are not changed" do
