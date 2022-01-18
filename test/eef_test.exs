@@ -4,7 +4,8 @@ defmodule EefTest do
 
   # Write a unique file and .formatter.exs for a test, run `mix format` on the
   # file, and assert whether the input matches the expected output.
-  defp assert_formatter_output(filename, input_ex, expected, dot_formatter_opts \\ []) do
+  defp assert_formatter_output(input_ex, expected, dot_formatter_opts \\ []) do
+    filename = "index.html.heex"
     ex_path = Path.join(System.tmp_dir(), filename)
     dot_formatter_path = ex_path <> ".formatter.exs"
     dot_formatter_opts = Keyword.put(dot_formatter_opts, :plugins, [Eef])
@@ -22,9 +23,12 @@ defmodule EefTest do
     assert File.read!(ex_path) == expected
   end
 
+  def assert_formatter_doesnt_change(code, opts \\ []) do
+    assert_formatter_output(code, code, opts)
+  end
+
   test "format HTML indentation" do
     assert_formatter_output(
-      "index.html.heex",
       """
       <section>
       <div>
@@ -46,7 +50,6 @@ defmodule EefTest do
 
   test "format inline HTML indentation" do
     assert_formatter_output(
-      "index.html.heex",
       """
       <section><div><h1>Hello</h1></div></section>
       """,
@@ -62,10 +65,39 @@ defmodule EefTest do
     )
   end
 
+  test "attributes wrap after 98 characters by default" do
+    assert_formatter_doesnt_change("""
+    <Component foo="..........." bar="..............." baz="............" qux="..................." />
+    """)
+
+    assert_formatter_output(
+      """
+      <Component foo="..........." bar="..............." baz="............" qux="...................." />
+      """,
+      """
+      <Component
+        foo="..........."
+        bar="..............."
+        baz="............"
+        qux="...................."
+      />
+      """
+    )
+  end
+
+  test "single line inputs are not changed" do
+    assert_formatter_doesnt_change("""
+    <div />
+    """)
+
+    assert_formatter_doesnt_change("""
+    <.component with="attribute" />
+    """)
+  end
+
   @tag :skip
   test "parse eex" do
     assert_formatter_output(
-      "index.html.heex",
       """
       <section>
         <%= live_redirect to: "url", id: "link", role: "button" do %>

@@ -4,6 +4,9 @@ defmodule Eef.Phases.Render do
   # Use 2 spaces for a tab
   @tab "  "
 
+  # Line length of opening tags before splitting attributes onto their own line
+  @default_line_length 98
+
   @doc """
   Transform the given nodes given by LV HTML Tokenizer to string.
 
@@ -50,18 +53,86 @@ defmodule Eef.Phases.Render do
     result.string
   end
 
-  defp node_to_string({:tag_open, tag, _attrs, _}, opts) do
-    # TODO: handle HTML attribues
-    indent_code = indent_code(opts.indentation)
-    string = "#{indent_code}<#{tag}>\n"
-    opts = %{opts | indentation: opts.indentation + 1}
+  defp node_to_string({:tag_open, tag, attrs, meta}, opts) do
+    # TODO: accept max_line_length as option.
+    max_line_length = @default_line_length
+    self_closed? = Map.get(meta, :self_close, false)
+    indentation = indent_code(opts.indentation)
 
-    {string, opts}
+    attrs_as_string =
+      Enum.reduce(attrs, "", fn
+        {attr, {:string, value, _meta}}, acc ->
+          ~s(#{acc}#{attr}="#{value}" )
+
+        {attr, {_, value, _meta}}, acc ->
+          ~s(#{acc}#{attr}=#{value} )
+      end)
+
+    # calculate length of the entire opening tag if fit on a single line
+    attrs_length = String.length(attrs_as_string)
+
+    # Check if there is more than one attribute and if so, check it fits in the
+    # same line.
+    length_on_same_line =
+      attrs_length + String.length(tag) +
+        if self_closed? do
+          4
+        else
+          2
+        end
+
+    put_attributes_on_separate_lines? =
+      if length(attrs) > 1 do
+        length_on_same_line > max_line_length
+      else
+        false
+      end
+
+    if put_attributes_on_separate_lines? do
+      tag_prefix = "#{indentation}<#{tag}\n"
+      attrs_indentation = indent_code(opts.indentation + 1)
+
+      attrs_with_new_lines =
+        Enum.reduce(attrs, "", fn
+          {attr, {:string, value, _meta}}, acc ->
+            acc <> "#{attrs_indentation}" <> ~s(#{attr}="#{value}"\n)
+
+          {attr, {_, value, _meta}}, acc ->
+            acc <> "#{attrs_indentation}" <> ~s(#{attr}=#{value}\n)
+        end)
+
+      tag_suffix = "#{indentation}/>\n"
+
+      tag_as_string = tag_prefix <> attrs_with_new_lines <> tag_suffix
+
+      {tag_as_string, opts.indentation + 1}
+    else
+      contain_attrs? = attrs_as_string != ""
+
+      tag_as_string =
+        case {contain_attrs?, self_closed?} do
+          {true, true} ->
+            "#{indentation}<#{tag} #{attrs_as_string}/>\n"
+
+          {true, false} ->
+            "#{indentation}<#{tag} #{attrs_as_string}>\n"
+
+          {false, false} ->
+            "#{indentation}<#{tag}>\n"
+
+          {false, true} ->
+            "#{indentation}<#{tag} />\n"
+        end
+
+      opts = %{opts | indentation: opts.indentation + 1}
+
+      {tag_as_string, opts}
+    end
   end
 
   defp node_to_string({:text, text, _meta}, opts) do
-    indent_code = indent_code(opts.indentation)
-    string = indent_code <> text <> "\n"
+    indentation = indent_code(opts.indentation)
+    string = indentation <> text <> "\n"
 
     {string, opts}
   end
