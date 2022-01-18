@@ -114,7 +114,6 @@ defmodule EefTest do
     """)
   end
 
-  @tag :skip
   test "parse eex" do
     assert_formatter_output(
       """
@@ -126,19 +125,11 @@ defmodule EefTest do
       """,
       """
       <section>
-
-        <%=
-          live_redirect to: \"url\", id: \"link\", role: \"button\" do
-        %>
-
+        <%= live_redirect to: "url", id: "link", role: "button" do %>
         <div>
           content
         </div>
-
-        <%
-          end
-        %>
-
+        <% end %>
       </section>
       """
     )

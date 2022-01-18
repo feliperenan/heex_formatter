@@ -13,8 +13,6 @@ defmodule Eef do
 
   @impl Mix.Tasks.Format
   def format(contents, _opts) do
-    IO.inspect(contents, label: "input")
-
     {nodes, :text} =
       contents
       |> parse_eex()
@@ -22,7 +20,8 @@ defmodule Eef do
 
     nodes
     |> Enum.reverse()
-    # |> Eef.Phases.TagWhitespace.run([])
+    |> Eef.Phases.TagWhitespace.run([])
+    |> Eef.Phases.NewLines.run([])
     |> Eef.Phases.Render.run([])
     |> revert_eex_markups()
   end

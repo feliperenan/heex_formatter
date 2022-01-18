@@ -37,20 +37,25 @@ defmodule Eef.Phases.Render do
   step before writting it to a file.
   """
   def run(nodes, _opts) do
-    opts = %{indentation: 0}
+    opts = %{indentation: 0, previous_node: nil}
 
     result =
-      Enum.reduce(nodes, %{string: "", opts: opts}, fn
-        {:text, "\n", _meta}, acc ->
-          acc
+      Enum.reduce(nodes, %{string: "", opts: opts}, fn node, acc ->
+        {node_as_string, opts} = node_to_string(node, acc.opts)
+        new_string = acc.string <> node_as_string
+        new_opts = %{opts | previous_node: node}
 
-        node, acc ->
-          {node_as_string, opts} = node_to_string(node, acc.opts)
-
-          %{acc | string: acc.string <> node_as_string, opts: opts}
+        %{acc | string: new_string, opts: new_opts}
       end)
 
     result.string
+  end
+
+  defp node_to_string({:tag_open, eex_tag, _attrs, _meta}, opts)
+       when eex_tag in ["eexr", "eex"] do
+    indentation = indent_code(opts.indentation)
+
+    {"#{indentation}<#{eex_tag}>", opts}
   end
 
   defp node_to_string({:tag_open, tag, attrs, meta}, opts) do
@@ -107,27 +112,29 @@ defmodule Eef.Phases.Render do
             "#{acc}#{attrs_indentation}" <> ~s(#{attr}=#{value}\n)
         end)
 
-      tag_suffix = "#{indentation}/>\n"
+      tag_suffix = "#{indentation}/>"
 
       tag_as_string = tag_prefix <> attrs_with_new_lines <> tag_suffix
 
-      {tag_as_string, opts.indentation + 1}
+      opts = %{opts | indentation: opts.indentation + 1}
+
+      {tag_as_string, opts}
     else
       contain_attrs? = attrs_as_string != ""
 
       tag_as_string =
         case {contain_attrs?, self_closed?} do
           {true, true} ->
-            "#{indentation}<#{tag} #{attrs_as_string}/>\n"
+            "#{indentation}<#{tag} #{attrs_as_string}/>"
 
           {true, false} ->
-            "#{indentation}<#{tag} #{attrs_as_string}>\n"
+            "#{indentation}<#{tag} #{attrs_as_string}>"
 
           {false, false} ->
-            "#{indentation}<#{tag}>\n"
+            "#{indentation}<#{tag}>"
 
           {false, true} ->
-            "#{indentation}<#{tag} />\n"
+            "#{indentation}<#{tag} />"
         end
 
       opts = %{opts | indentation: opts.indentation + 1}
@@ -136,16 +143,33 @@ defmodule Eef.Phases.Render do
     end
   end
 
-  defp node_to_string({:text, text, _meta}, opts) do
-    indentation = indent_code(opts.indentation)
-    string = indentation <> text <> "\n"
+  defp node_to_string({:text, "\n", _meta}, opts) do
+    {"\n", opts}
+  end
 
-    {string, opts}
+  defp node_to_string({:text, text, _meta}, opts) do
+    previous_node = Map.get(opts, :previous_node)
+
+    case previous_node do
+      # This is to avoid indentation in case the previous node is an eex tag.
+      {:tag_open, tag, _attrs, _meta} when tag in ["eexr", "eex"] ->
+        {text, opts}
+
+      _previous_noe ->
+        indentation = indent_code(opts.indentation)
+        string = "\n" <> indentation <> text <> "\n"
+        {string, opts}
+    end
+  end
+
+  defp node_to_string({:tag_close, eex_tag, _meta}, opts)
+       when eex_tag in ["eexr", "eex"] do
+    {"</#{eex_tag}>", opts}
   end
 
   defp node_to_string({:tag_close, tag, _meta}, opts) do
     indent_code = indent_code(opts.indentation - 1)
-    string = "#{indent_code}</#{tag}>\n"
+    string = "#{indent_code}</#{tag}>"
 
     {string, %{opts | indentation: opts.indentation - 1}}
   end
