@@ -22,7 +22,7 @@ defmodule EefTest do
     assert File.read!(ex_path) == expected
   end
 
-  test "format file indentation" do
+  test "format HTML indentation" do
     assert_formatter_output(
       "index.html.heex",
       """
@@ -35,7 +35,27 @@ defmodule EefTest do
       """
       <section>
         <div>
-          <h1>Hello</h1>
+          <h1>
+            Hello
+          </h1>
+        </div>
+      </section>
+      """
+    )
+  end
+
+  test "format inline HTML indentation" do
+    assert_formatter_output(
+      "index.html.heex",
+      """
+      <section><div><h1>Hello</h1></div></section>
+      """,
+      """
+      <section>
+        <div>
+          <h1>
+            Hello
+          </h1>
         </div>
       </section>
       """

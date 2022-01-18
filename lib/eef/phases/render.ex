@@ -28,49 +28,49 @@ defmodule Eef.Phases.Render do
 
   This function will return:
 
-  "<section>\n  <div>\n    <h1>Hello</h1>\n  </div>\n</section>\n"
+  "<section>\n  <div>\n    <h1>\n      Hello\n    </h1>\n  </div>\n</section>\n"
 
   Notice that this is already formatted. So this is supposed to be the last
   step before writting it to a file.
   """
   def run(nodes, _opts) do
-    opts = %{indentation: 0, last_tag_open_line: nil}
+    opts = %{indentation: 0}
 
     result =
-      Enum.reduce(nodes, %{string: "", opts: opts}, fn node, acc ->
-        {node_as_string, opts} = node_to_string(node, acc.opts)
+      Enum.reduce(nodes, %{string: "", opts: opts}, fn
+        {:text, "\n", _meta}, acc ->
+          acc
 
-        %{acc | string: acc.string <> node_as_string, opts: opts}
+        node, acc ->
+          {node_as_string, opts} = node_to_string(node, acc.opts)
+
+          %{acc | string: acc.string <> node_as_string, opts: opts}
       end)
 
     result.string
   end
 
-  defp node_to_string({:tag_open, tag, _attrs, %{line: line}}, opts) do
+  defp node_to_string({:tag_open, tag, _attrs, _}, opts) do
     # TODO: handle HTML attribues
     indent_code = indent_code(opts.indentation)
-    string = "#{indent_code}<#{tag}>"
-    opts = %{opts | indentation: opts.indentation + 1, last_tag_open_line: line}
+    string = "#{indent_code}<#{tag}>\n"
+    opts = %{opts | indentation: opts.indentation + 1}
 
     {string, opts}
   end
 
   defp node_to_string({:text, text, _meta}, opts) do
-    {text, opts}
+    indent_code = indent_code(opts.indentation)
+    string = indent_code <> text <> "\n"
+
+    {string, opts}
   end
 
-  defp node_to_string({:tag_close, tag, %{line: line}}, opts) do
-    indentation = opts.indentation - 1
+  defp node_to_string({:tag_close, tag, _meta}, opts) do
+    indent_code = indent_code(opts.indentation - 1)
+    string = "#{indent_code}</#{tag}>\n"
 
-    string =
-      if line == opts.last_tag_open_line do
-        "</#{tag}>"
-      else
-        indent_code = indent_code(indentation)
-        "#{indent_code}</#{tag}>"
-      end
-
-    {string, %{opts | indentation: indentation}}
+    {string, %{opts | indentation: opts.indentation - 1}}
   end
 
   defp indent_code(indentation) do
