@@ -5,7 +5,7 @@ defmodule Eef.MixProject do
     [
       app: :eef,
       version: "0.1.0",
-      elixir: "~> 1.12",
+      elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -23,7 +23,7 @@ defmodule Eef.MixProject do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-      {:phoenix_live_view, "~> 0.16.1"},
+      {:phoenix_live_view, "~> 0.17.5"},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false}
     ]
   end
