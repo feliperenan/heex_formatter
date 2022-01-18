@@ -5,6 +5,11 @@ defmodule Eef.Phases.TagWhitespace do
 
   This is the first phase of formatting, and all other phases depend on it.
   """
+
+  def run([_ | _] = nodes, _opts) do
+    Enum.map(nodes, &tag_whitespace/1)
+  end
+
   def run({nodes, :text}, _opts) do
     Enum.map(Enum.reverse(nodes), &tag_whitespace/1)
   end

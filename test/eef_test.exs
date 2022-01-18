@@ -64,14 +64,32 @@ defmodule EefTest do
 
   @tag :skip
   test "parse eex" do
-    html = """
-    <section>
-      <%= live_redirect to: "url", id: "link", role: "button" do %>
-        <div>     content</div>
-      <% end %>
-    </section>
-    """
+    assert_formatter_output(
+      "index.html.heex",
+      """
+      <section>
+        <%= live_redirect to: "url", id: "link", role: "button" do %>
+          <div>     content</div>
+        <% end %>
+      </section>
+      """,
+      """
+      <section>
 
-    assert Eef.format(html, []) == nil
+        <%=
+          live_redirect to: \"url\", id: \"link\", role: \"button\" do
+        %>
+
+        <div>
+          content
+        </div>
+
+        <%
+          end
+        %>
+
+      </section>
+      """
+    )
   end
 end
