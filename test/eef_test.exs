@@ -9,6 +9,7 @@ defmodule EefTest do
       <.some_local_func_compoent attr1="some string">
     </div>
     """
+
     assert Eef.hello() == :world
   end
 end

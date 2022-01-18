@@ -5,13 +5,11 @@ defmodule Eef do
 
   alias Phoenix.LiveView.HTMLTokenizer
 
-
   def format(text) do
     text
-      |> HTMLTokenizer.tokenize("nofile", 0, [])
-      |> Eef.Phases.NestElements.run()
-      |> Eef.Render.as_string()
-      |> IO.puts()
+    |> HTMLTokenizer.tokenize("nofile", 0, [])
+    |> Eef.Phases.NestElements.run()
+    |> Eef.Render.as_string()
+    |> IO.puts()
   end
-
 end
