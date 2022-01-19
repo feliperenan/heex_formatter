@@ -58,89 +58,41 @@ defmodule Eef.Phases.Render do
     {"#{indentation}<#{eex_tag}>", opts}
   end
 
-  defp node_to_string({:tag_open, tag, attrs, meta}, opts) do
-    # TODO: accept max_line_length as option.
-    max_line_length = @default_line_length
+  defp node_to_string({:tag_open, tag, attrs, meta} = node, opts) do
     self_closed? = Map.get(meta, :self_close, false)
     indentation = indent_code(opts.indentation)
 
-    attrs_as_string =
-      Enum.reduce(attrs, "", fn
-        {attr, {:string, value, _meta}}, acc ->
-          ~s(#{acc}#{attr}="#{value}" )
+    rendered_tag =
+      if put_attributes_on_separate_lines?(node) do
+        tag_prefix = "#{indentation}<#{tag}\n"
+        tag_suffix = if self_closed?, do: "\n#{indentation}/>", else: "\n#{indentation}>"
+        attrs_indentation = indent_code(opts.indentation + 1)
 
-        {attr, {:expr, value, _meta}}, acc ->
-          ~s(#{acc}#{attr}={#{value}} )
+        render_attribute_with_new_lines =
+          attrs
+          |> Enum.map(&"#{attrs_indentation}#{render_attribute(&1)}")
+          |> Enum.join("\n")
 
-        {attr, {_, value, _meta}}, acc ->
-          ~s(#{acc}#{attr}=#{value} )
-      end)
-
-    # calculate length of the entire opening tag if fit on a single line
-    attrs_length = String.length(attrs_as_string)
-
-    # Check if there is more than one attribute and if so, check it fits in the
-    # same line.
-    length_on_same_line =
-      attrs_length + String.length(tag) +
-        if self_closed? do
-          4
-        else
-          2
-        end
-
-    put_attributes_on_separate_lines? =
-      if length(attrs) > 1 do
-        length_on_same_line > max_line_length
+        tag_prefix <> render_attribute_with_new_lines <> tag_suffix
       else
-        false
+        rendered_attr =
+          attrs
+          |> Enum.map(&render_attribute/1)
+          |> Enum.intersperse(" ")
+          |> Enum.join("")
+
+        tag_prefix = String.trim("<#{tag} #{rendered_attr}")
+
+        if self_closed? do
+          "#{indentation}#{tag_prefix} />"
+        else
+          "#{indentation}#{tag_prefix}>"
+        end
       end
 
-    if put_attributes_on_separate_lines? do
-      tag_prefix = "#{indentation}<#{tag}\n"
-      attrs_indentation = indent_code(opts.indentation + 1)
+    indentation = if self_closed?, do: opts.indentation, else: opts.indentation + 1
 
-      attrs_with_new_lines =
-        Enum.reduce(attrs, "", fn
-          {attr, {:string, value, _meta}}, acc ->
-            "#{acc}#{attrs_indentation}" <> ~s(#{attr}="#{value}"\n)
-
-          {attr, {:expr, value, _meta}}, acc ->
-            "#{acc}#{attrs_indentation}" <> ~s(#{attr}={#{value}}\n)
-
-          {attr, {_, value, _meta}}, acc ->
-            "#{acc}#{attrs_indentation}" <> ~s(#{attr}=#{value}\n)
-        end)
-
-      tag_suffix = "#{indentation}/>"
-
-      tag_as_string = tag_prefix <> attrs_with_new_lines <> tag_suffix
-
-      opts = %{opts | indentation: opts.indentation + 1}
-
-      {tag_as_string, opts}
-    else
-      contain_attrs? = attrs_as_string != ""
-
-      tag_as_string =
-        case {contain_attrs?, self_closed?} do
-          {true, true} ->
-            "#{indentation}<#{tag} #{attrs_as_string}/>"
-
-          {true, false} ->
-            "#{indentation}<#{tag} #{attrs_as_string}>"
-
-          {false, false} ->
-            "#{indentation}<#{tag}>"
-
-          {false, true} ->
-            "#{indentation}<#{tag} />"
-        end
-
-      opts = %{opts | indentation: opts.indentation + 1}
-
-      {tag_as_string, opts}
-    end
+    {rendered_tag, %{opts | indentation: indentation}}
   end
 
   defp node_to_string({:text, "\n", _meta}, opts) do
@@ -176,5 +128,51 @@ defmodule Eef.Phases.Render do
 
   defp indent_code(indentation) do
     String.duplicate(@tab, indentation)
+  end
+
+  defp put_attributes_on_separate_lines?({:tag_open, tag, attrs, meta}) do
+    # TODO: accept max_line_length as option.
+    max_line_length = @default_line_length
+    self_closed? = Map.get(meta, :self_close, false)
+
+    # Calculate attrs length. It considers 1 space between each attribute, that
+    # is why it adds + 1 for each attribute.
+    attrs_length =
+      attrs
+      |> Enum.map(fn attr ->
+        attr
+        |> render_attribute()
+        |> String.length()
+        |> then(&(&1 + 1))
+      end)
+      |> Enum.sum()
+
+    # Calculate the length of tag + attrs + spaces.
+    length_on_same_line =
+      attrs_length + String.length(tag) +
+        if self_closed? do
+          4
+        else
+          2
+        end
+
+    if length(attrs) > 1 do
+      length_on_same_line > max_line_length
+    else
+      false
+    end
+  end
+
+  defp render_attribute(attr) do
+    case attr do
+      {attr, {:string, value, _meta}} ->
+        ~s(#{attr}="#{value}")
+
+      {attr, {:expr, value, _meta}} ->
+        ~s(#{attr}={#{value}})
+
+      {attr, {_, value, _meta}} ->
+        ~s(#{attr}=#{value})
+    end
   end
 end

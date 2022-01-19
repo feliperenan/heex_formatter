@@ -27,7 +27,7 @@ defmodule EefTest do
     assert_formatter_output(code, code, opts)
   end
 
-  test "format HTML indentation" do
+  test "add indentation when there aren't any" do
     assert_formatter_output(
       """
       <section>
@@ -43,6 +43,22 @@ defmodule EefTest do
             Hello
           </h1>
         </div>
+      </section>
+      """
+    )
+  end
+
+  test "fix indentation when it fits inline" do
+    assert_formatter_output(
+      """
+      <section id="id" phx-hook="PhxHook">
+        <.component
+          image_url={@url} />
+      </section>
+      """,
+      """
+      <section id="id" phx-hook="PhxHook">
+        <.component image_url={@url} />
       </section>
       """
     )
@@ -100,6 +116,27 @@ defmodule EefTest do
         baz="............"
         qux="...................."
       />
+      """
+    )
+
+    assert_formatter_output(
+      """
+      <div foo="..........." bar="..............." baz="............" qux="...................." bla="......">
+        <h1>Title</h1>
+      </div>
+      """,
+      """
+      <div
+        foo="..........."
+        bar="..............."
+        baz="............"
+        qux="...................."
+        bla="......"
+      >
+        <h1>
+          Title
+        </h1>
+      </div>
       """
     )
   end
