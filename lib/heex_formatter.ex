@@ -13,34 +13,65 @@ defmodule HeexFormatter do
 
   @impl Mix.Tasks.Format
   def format(contents, _opts) do
-    {nodes, :text} =
-      contents
-      |> parse_eex()
-      |> HTMLTokenizer.tokenize("nofile", 0, [], [], :text)
+    {text, eex_tokenizer_nodes} = extract_eex_text(contents)
+    {html_nodes, :text} = HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text)
 
-    nodes
+    html_nodes
     |> Enum.reverse()
+    |> join_nodes(eex_tokenizer_nodes)
     |> HeexFormatter.Phases.EnsureLineBreaks.run([])
     |> HeexFormatter.Phases.Render.run([])
-    |> revert_eex_markups()
   end
 
-  # TODO: Parse EEX since HTMLTokenizer doesn't expect it.
-  defp parse_eex(contents) do
-    contents
-    |> then(&Regex.replace(~r/<%=(.*)%>/, &1, "<eexr>\\g{1}</eexr>"))
-    |> then(&Regex.replace(~r/<%(.*)%>/, &1, "<eex>\\g{1}</eex>"))
-  end
+  def join_nodes(html_nodes, eex_tokenizer_nodes) do
+    new_nodes =
+      eex_tokenizer_nodes
+      |> Enum.reduce([], fn
+        {:start_expr, line, column, '=', expr}, acc ->
+          [
+            {:text, "<%= #{String.trim(to_string(expr))} %>",
+             %{column: column + 1, line: line + 1}}
+            | acc
+          ]
 
-  @eex_markups [
-    {"<eexr>", "<%= "},
-    {"</eexr>", " %>"},
-    {"<eex>", "<% "},
-    {"</eex>", " %>"}
-  ]
-  defp revert_eex_markups(content) do
-    Enum.reduce(@eex_markups, content, fn {from, to}, updated_content ->
-      String.replace(updated_content, from, to)
+        {:end_expr, line, column, _opts, expr}, acc ->
+          [
+            {:text, "<% #{String.trim(to_string(expr))} %>",
+             %{column: column + 1, line: line + 1}}
+            | acc
+          ]
+
+        _expr, acc ->
+          acc
+      end)
+      |> Enum.reverse()
+
+    (html_nodes ++ new_nodes)
+    |> Enum.reject(&(&1 == {:text, "\n", %{}}))
+    |> Enum.sort_by(fn
+      {_, _, _, %{line: line, column: column}} ->
+        {line, column}
+
+      {_, _, %{column_end: column_end, line_end: line_end}} ->
+        {line_end, column_end}
+
+      {_, _, %{column: column, line: line}} ->
+        {line, column}
     end)
+  end
+
+  defp extract_eex_text(contents) do
+    {:ok, nodes} = EEx.Tokenizer.tokenize(contents, 0, 0, %{indentation: 0, trim: false})
+
+    text =
+      Enum.reduce(nodes, "", fn
+        {:text, _line, _col, text}, acc ->
+          acc <> List.to_string(text)
+
+        _node, acc ->
+          acc
+      end)
+
+    {text, nodes}
   end
 end
