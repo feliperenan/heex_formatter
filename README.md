@@ -1,7 +1,35 @@
 # HeexFormatter
 
-Inspired by https://github.com/surface-ui/surface_formatter
-
 [![ElixirCI](https://github.com/feliperenan/heex_formatter/actions/workflows/elixir.yml/badge.svg)](https://github.com/feliperenan/heex_formatter/actions/workflows/elixir.yml)
 
-This project is still is alpha. There is a lot of work to be done.
+A code formatter for Heex tamplates.
+
+:warning: This project is still in alpha stage. There are serveral cases yet to be handled.
+
+![](examples/example.gif)
+
+### Installation
+
+add `:heex_formatter` as dependency
+
+```elixir
+defp deps do
+  [
+    # ...
+    {:heex_formatter, github: "feliperenan/heex_formatter"}
+  ]
+end
+```
+
+Add it as plugin to your project `.formatter` file.
+
+```elixir
+[
+  plugins: [HeexFormatter],
+  import_deps: [:ecto, :phoenix],
+  inputs: ["*.{ex,exs}", "priv/*/seeds.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  subdirectories: ["priv/*/migrations"]
+]
+```
+
+Inspired by [Surface Formatter](https://github.com/surface-ui/surface_formatter).
