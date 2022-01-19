@@ -20,8 +20,7 @@ defmodule HeexFormatter do
 
     nodes
     |> Enum.reverse()
-    |> HeexFormatter.Phases.TagWhitespace.run([])
-    |> HeexFormatter.Phases.NewLines.run([])
+    |> HeexFormatter.Phases.EnsureLineBreaks.run([])
     |> HeexFormatter.Phases.Render.run([])
     |> revert_eex_markups()
   end
