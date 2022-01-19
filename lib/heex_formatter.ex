@@ -1,6 +1,6 @@
-defmodule Eef do
+defmodule HeexFormatter do
   @moduledoc """
-  Documentation for `Eef`.
+  Documentation for `HeexFormatter`.
   """
   @behaviour Mix.Tasks.Format
 
@@ -20,9 +20,9 @@ defmodule Eef do
 
     nodes
     |> Enum.reverse()
-    |> Eef.Phases.TagWhitespace.run([])
-    |> Eef.Phases.NewLines.run([])
-    |> Eef.Phases.Render.run([])
+    |> HeexFormatter.Phases.TagWhitespace.run([])
+    |> HeexFormatter.Phases.NewLines.run([])
+    |> HeexFormatter.Phases.Render.run([])
     |> revert_eex_markups()
   end
 

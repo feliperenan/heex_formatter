@@ -1,6 +1,6 @@
-defmodule EefTest do
+defmodule HeexFormatterTest do
   use ExUnit.Case
-  doctest Eef
+  doctest HeexFormatter
 
   # Write a unique file and .formatter.exs for a test, run `mix format` on the
   # file, and assert whether the input matches the expected output.
@@ -8,7 +8,7 @@ defmodule EefTest do
     filename = "index.html.heex"
     ex_path = Path.join(System.tmp_dir(), filename)
     dot_formatter_path = ex_path <> ".formatter.exs"
-    dot_formatter_opts = Keyword.put(dot_formatter_opts, :plugins, [Eef])
+    dot_formatter_opts = Keyword.put(dot_formatter_opts, :plugins, [HeexFormatter])
 
     on_exit(fn ->
       File.rm(ex_path)

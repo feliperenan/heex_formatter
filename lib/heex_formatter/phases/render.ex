@@ -1,4 +1,4 @@
-defmodule Eef.Phases.Render do
+defmodule HeexFormatter.Phases.Render do
   @moduledoc false
 
   # Use 2 spaces for a tab

@@ -1,4 +1,4 @@
-defmodule Eef.Phases.NewLines do
+defmodule HeexFormatter.Phases.NewLines do
   @moduledoc false
 
   @doc """

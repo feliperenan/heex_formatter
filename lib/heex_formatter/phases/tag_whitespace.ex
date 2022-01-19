@@ -1,4 +1,4 @@
-defmodule Eef.Phases.TagWhitespace do
+defmodule HeexFormatter.Phases.TagWhitespace do
   @moduledoc false
 
   @doc """
