@@ -1,4 +1,4 @@
-defmodule HeexFormatter.Phases.NewLines do
+defmodule HeexFormatter.Phases.EnsureLineBreaks do
   @moduledoc false
 
   @doc """
@@ -39,15 +39,30 @@ defmodule HeexFormatter.Phases.NewLines do
   """
   def run(nodes, _opts) do
     initial_state = %{nodes: [], previous: nil, index: 0, length: length(nodes)}
-    result = Enum.reduce(nodes, initial_state, &may_add_new_line/2)
+    result = Enum.reduce(nodes, initial_state, &ensure_correct_line_breaks/2)
     result.nodes
   end
 
-  defp may_add_new_line({:text, _text, _meta} = node, acc) do
-    update_state(acc, [node], node)
+  defp ensure_correct_line_breaks({:text, text, meta} = node, acc) do
+    cond do
+      # In case it is a line break and it is the last interaction, we want to keep
+      # this line break in the end of the nodes.
+      line_break?(node) and last_interaction?(acc) ->
+        update_state(acc, [{:text, "\n", meta}], acc.previous)
+
+      # Skip this node in case this is a line break so that we will keep just one
+      # line break among tags.
+      line_break?(node) ->
+        update_state(acc, [], acc.previous)
+
+      # Here we know that it is not a line break so we can safely trim it to
+      # remove extra spaces from the string.
+      true ->
+        update_state(acc, [{:text, String.trim(text), meta}], node)
+    end
   end
 
-  defp may_add_new_line(node, acc) do
+  defp ensure_correct_line_breaks(node, acc) do
     case acc.previous do
       nil ->
         update_state(acc, [node], node)
@@ -56,7 +71,7 @@ defmodule HeexFormatter.Phases.NewLines do
         update_state(acc, [node], node)
 
       _node ->
-        if acc.index + 1 == acc.length do
+        if last_interaction?(acc) do
           update_state(acc, [node], node)
         else
           new_line = {:text, "\n", %{}}
@@ -73,4 +88,14 @@ defmodule HeexFormatter.Phases.NewLines do
         index: state.index + 1
     }
   end
+
+  defp last_interaction?(state) do
+    state.index + 1 == state.length
+  end
+
+  defp line_break?({:text, text, _meta}) do
+    String.trim(text) == ""
+  end
+
+  defp line_break?(_node), do: false
 end

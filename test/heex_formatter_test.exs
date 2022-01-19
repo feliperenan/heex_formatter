@@ -27,6 +27,45 @@ defmodule HeexFormatterTest do
     assert_formatter_output(code, code, opts)
   end
 
+  test "remove unwanted empty lines" do
+    assert_formatter_output(
+      """
+
+
+      <section>
+
+
+
+      <div>
+      <h1>    Hello</h1>
+      <h2>
+
+
+      Sub title
+
+      </h2>
+
+
+
+      </div>
+      </section>
+
+      """,
+      """
+      <section>
+        <div>
+          <h1>
+            Hello
+          </h1>
+          <h2>
+            Sub title
+          </h2>
+        </div>
+      </section>
+      """
+    )
+  end
+
   test "add indentation when there aren't any" do
     assert_formatter_output(
       """
