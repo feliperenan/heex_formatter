@@ -6,17 +6,12 @@ defmodule HeexFormatter.Phases.Format do
 
   [
     {:tag_open, "section", [], %{column: 1, line: 1}},
-    {:text, "\n", %{column_end: 1, line_end: 2}},
     {:tag_open, "div", [], %{column: 1, line: 2}},
-    {:text, "\n", %{column_end: 1, line_end: 3}},
     {:tag_open, "h1", [], %{column: 1, line: 3}},
     {:text, "Hello", %{column_end: 10, line_end: 3}},
     {:tag_close, "h1", %{column: 10, line: 3}},
-    {:text, "\n", %{column_end: 1, line_end: 4}},
     {:tag_close, "div", %{column: 1, line: 4}},
-    {:text, "\n", %{column_end: 1, line_end: 5}},
-    {:tag_close, "section", %{column: 1, line: 5}},
-    {:text, "\n", %{column_end: 1, line_end: 6}}
+    {:tag_close, "section", %{column: 1, line: 5}}
   ]
 
   The following string will be returned:
@@ -35,16 +30,28 @@ defmodule HeexFormatter.Phases.Format do
 
   @spec run(list(), Keyword.t()) :: String.t()
   def run(tokens, _opts) do
-    initial_state = %{html_text: "", indentation: 0}
-    result = Enum.reduce(tokens, initial_state, &token_to_string/2)
-    result.html_text
+    initial_state = %{html: "", previous_token: nil, indentation: 0}
+
+    result =
+      Enum.reduce(tokens, initial_state, fn token, state ->
+        new_state = token_to_string(token, state)
+
+        # Set the previous token so we can check it to know how the current tag should
+        # be formatted.
+        %{new_state | previous_token: token}
+      end)
+
+    # That is because we are adding "\n" everytime a tag is open. Then we need to extract
+    # "\n" from the first line and put this in the end of the line.
+    "\n" <> html = result.html
+    html <> "\n"
   end
 
   defp token_to_string({:tag_open, tag, attrs, meta} = node, state) do
     self_closed? = Map.get(meta, :self_close, false)
     indent = indent_expression(state.indentation)
 
-    html_text =
+    tag_opened =
       if put_attrs_in_separeted_lines?(node) do
         tag_prefix = "#{indent}<#{tag}\n"
         tag_suffix = if self_closed?, do: "\n#{indent}/>", else: "\n#{indent}>"
@@ -72,49 +79,59 @@ defmodule HeexFormatter.Phases.Format do
 
     indentation = if self_closed?, do: state.indentation, else: state.indentation + 1
 
-    %{state | html_text: state.html_text <> html_text, indentation: indentation}
-  end
-
-  defp token_to_string({:text, "\n", _meta}, state) do
-    %{state | html_text: state.html_text <> "\n"}
+    %{state | html: state.html <> "\n" <> tag_opened, indentation: indentation}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
-    indent = indent_expression(state.indentation)
-    html_text = "\n" <> indent <> text <> "\n"
-    %{state | html_text: state.html_text <> html_text}
+    text =
+      case state.previous_token do
+        {:eex_tag_open, _tag, _meta} ->
+          " " <> String.trim(text)
+
+        _token ->
+          indent = indent_expression(state.indentation)
+          "\n" <> indent <> String.trim(text)
+      end
+
+    %{state | html: state.html <> text}
   end
 
   defp token_to_string({:tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
     indent = indent_expression(indentation)
-    html_text = "#{indent}</#{tag}>"
+    tag_closed = "\n#{indent}</#{tag}>"
 
-    %{state | html_text: state.html_text <> html_text, indentation: indentation}
+    %{state | html: state.html <> tag_closed, indentation: indentation}
   end
 
   defp token_to_string({:eex_tag_open, tag, meta}, state) do
-    block? = Map.get(meta, :block?, false)
-    indent = indent_expression(state.indentation)
-    indentation = if block?, do: state.indentation + 1, else: state.indentation
-    html_text = indent <> tag
+    case state.previous_token do
+      {:text, _text, _meta} ->
+        eex_tag_opened = " " <> tag
+        %{state | html: state.html <> eex_tag_opened}
 
-    %{state | html_text: state.html_text <> html_text, indentation: indentation}
+      _token ->
+        indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
+        indent = indent_expression(state.indentation)
+        eex_tag_opened = "\n" <> indent <> tag
+
+        %{state | html: state.html <> eex_tag_opened, indentation: indentation}
+    end
   end
 
   defp token_to_string({:eex_tag_close, "<% else %>" = tag, _meta}, state) do
     indent = indent_expression(state.indentation - 1)
-    html_text = indent <> tag
+    eex_tag_closed = "\n" <> indent <> tag
 
-    %{state | html_text: state.html_text <> html_text}
+    %{state | html: state.html <> eex_tag_closed}
   end
 
   defp token_to_string({:eex_tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
     indent = indent_expression(indentation)
-    html_text = indent <> tag
+    eex_tag_closed = "\n" <> indent <> tag
 
-    %{state | html_text: state.html_text <> html_text, indentation: indentation}
+    %{state | html: state.html <> eex_tag_closed, indentation: indentation}
   end
 
   defp indent_expression(indentation) do

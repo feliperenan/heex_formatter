@@ -43,7 +43,7 @@ defmodule HeexFormatter.Phases.Tokenizer do
   defp tokenize({:text, _line, _column, text}, acc) do
     string = List.to_string(text)
     {tokens, :text} = HTMLTokenizer.tokenize(string, "nofile", 0, [], [], :text)
-    {Enum.reverse(tokens), acc}
+    {tokens |> Enum.reject(&line_break?/1) |> Enum.reverse(), acc}
   end
 
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
@@ -68,4 +68,10 @@ defmodule HeexFormatter.Phases.Tokenizer do
   defp tokenize(_node, acc) do
     {[], acc}
   end
+
+  defp line_break?({:text, text, _meta}) do
+    String.trim(text) == ""
+  end
+
+  defp line_break?(_node), do: false
 end
