@@ -227,4 +227,19 @@ defmodule HeexFormatterTest do
       """
     )
   end
+
+  test "format tags with attributes without value" do
+    assert_formatter_output(
+      """
+
+        <button class="btn-primary" autofocus disabled> Submit </button>
+
+      """,
+      """
+      <button class="btn-primary" autofocus disabled>
+        Submit
+      </button>
+      """
+    )
+  end
 end

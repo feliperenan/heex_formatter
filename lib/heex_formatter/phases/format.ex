@@ -49,7 +49,9 @@ defmodule HeexFormatter.Phases.Format do
         tag_prefix = "#{indent}<#{tag}\n"
         tag_suffix = if self_closed?, do: "\n#{indent}/>", else: "\n#{indent}>"
         indent_attrs = indent_expression(state.indentation + 1)
-        attrs_with_new_lines = Enum.map_join(attrs, "\n", &"#{indent_attrs}#{render_attribute(&1)}")
+
+        attrs_with_new_lines =
+          Enum.map_join(attrs, "\n", &"#{indent_attrs}#{render_attribute(&1)}")
 
         tag_prefix <> attrs_with_new_lines <> tag_suffix
       else
@@ -137,8 +139,7 @@ defmodule HeexFormatter.Phases.Format do
       |> Enum.sum()
 
     # Calculate the length of tag + attrs + spaces.
-    length_on_same_line =
-      attrs_length + String.length(tag) + if self_closed?, do: 4, else: 2
+    length_on_same_line = attrs_length + String.length(tag) + if self_closed?, do: 4, else: 2
 
     if length(attrs) > 1 do
       length_on_same_line > max_line_length
@@ -157,6 +158,9 @@ defmodule HeexFormatter.Phases.Format do
 
       {attr, {_, value, _meta}} ->
         ~s(#{attr}=#{value})
+
+      {attr, nil} ->
+        ~s(#{attr})
     end
   end
 end
