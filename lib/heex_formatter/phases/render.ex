@@ -39,8 +39,6 @@ defmodule HeexFormatter.Phases.Render do
   def run(nodes, _opts) do
     opts = %{indentation: 0, previous_node: nil}
 
-    IO.inspect(nodes)
-
     result =
       Enum.reduce(nodes, %{string: "", opts: opts}, fn node, acc ->
         {node_as_string, opts} = node_to_string(node, acc.opts)
@@ -125,8 +123,15 @@ defmodule HeexFormatter.Phases.Render do
   end
 
   defp node_to_string({:eex_tag_close, tag, _meta}, opts) do
-    indent_code = indent_code(opts.indentation - 1)
-    {indent_code <> tag, %{opts | indentation: opts.indentation - 1}}
+    IO.inspect(tag)
+
+    if tag == "<% else %>" do
+      indent_code = indent_code(opts.indentation - 1)
+      {indent_code <> tag, %{opts | indentation: opts.indentation}}
+    else
+      indent_code = indent_code(opts.indentation - 1)
+      {indent_code <> tag, %{opts | indentation: opts.indentation - 1}}
+    end
   end
 
   defp indent_code(indentation) do
