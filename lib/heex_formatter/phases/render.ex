@@ -123,8 +123,6 @@ defmodule HeexFormatter.Phases.Render do
   end
 
   defp node_to_string({:eex_tag_close, tag, _meta}, opts) do
-    IO.inspect(tag)
-
     if tag == "<% else %>" do
       indent_code = indent_code(opts.indentation - 1)
       {indent_code <> tag, %{opts | indentation: opts.indentation}}
