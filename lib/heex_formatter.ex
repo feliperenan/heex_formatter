@@ -4,8 +4,6 @@ defmodule HeexFormatter do
   """
   @behaviour Mix.Tasks.Format
 
-  alias Phoenix.LiveView.HTMLTokenizer
-
   @impl Mix.Tasks.Format
   def features(_opts) do
     [sigils: [:H], extensions: [".heex"]]

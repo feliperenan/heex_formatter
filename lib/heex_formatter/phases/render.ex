@@ -122,14 +122,14 @@ defmodule HeexFormatter.Phases.Render do
     {indent_code <> tag, %{opts | indentation: indentation}}
   end
 
+  defp node_to_string({:eex_tag_close, "<% else %>" = tag, _meta}, opts) do
+    indent_code = indent_code(opts.indentation - 1)
+    {indent_code <> tag, %{opts | indentation: opts.indentation}}
+  end
+
   defp node_to_string({:eex_tag_close, tag, _meta}, opts) do
-    if tag == "<% else %>" do
-      indent_code = indent_code(opts.indentation - 1)
-      {indent_code <> tag, %{opts | indentation: opts.indentation}}
-    else
-      indent_code = indent_code(opts.indentation - 1)
-      {indent_code <> tag, %{opts | indentation: opts.indentation - 1}}
-    end
+    indent_code = indent_code(opts.indentation - 1)
+    {indent_code <> tag, %{opts | indentation: opts.indentation - 1}}
   end
 
   defp indent_code(indentation) do
