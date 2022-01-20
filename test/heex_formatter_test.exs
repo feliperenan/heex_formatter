@@ -195,7 +195,7 @@ defmodule HeexFormatterTest do
       """
       <section>
         <%= live_redirect to: "url", id: "link", role: "button" do %>
-          <div>     content</div>
+          <div>     <p>content 1</p><p>content 2</p></div>
         <% end %>
         <p>
         <%=
@@ -208,7 +208,12 @@ defmodule HeexFormatterTest do
       <section>
         <%= live_redirect to: "url", id: "link", role: "button" do %>
           <div>
-            content
+            <p>
+              content 1
+            </p>
+            <p>
+              content 2
+            </p>
           </div>
         <% end %>
         <p>
@@ -239,6 +244,45 @@ defmodule HeexFormatterTest do
       <button class="btn-primary" autofocus disabled>
         Submit
       </button>
+      """
+    )
+  end
+
+  test "keep tags with text and eex expressions inline" do
+    assert_formatter_output(
+      """
+        <p>
+          $
+          <%= @product.value %> in Dollars
+        </p>
+
+        <button>
+          Submit
+        </button>
+      """,
+      """
+      <p>
+        $ <%= @product.value %> in Dollars
+      </p>
+      <button>
+        Submit
+      </button>
+      """
+    )
+  end
+
+  test "test" do
+    assert_formatter_output(
+      """
+        <p><span>this is a long long long long long looooooong text</span><%= @product.value %> and more stuff over here</p>
+      """,
+      """
+      <p>
+        <span>
+          this is a long long long long long looooooong text
+        </span>
+        <%= @product.value %> and more stuff over here
+      </p>
       """
     )
   end
