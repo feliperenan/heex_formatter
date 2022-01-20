@@ -31,5 +31,9 @@ Add it as plugin to your project `.formatter` file.
   subdirectories: ["priv/*/migrations"]
 ]
 ```
+Now run 
+```elixir
+mix compile
+```
 
 Inspired by [Surface Formatter](https://github.com/surface-ui/surface_formatter).
