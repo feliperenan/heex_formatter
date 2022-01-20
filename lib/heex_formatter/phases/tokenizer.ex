@@ -1,7 +1,6 @@
 defmodule HeexFormatter.Phases.Tokenizer do
   @moduledoc """
-  This Phase tokenize the given contents using EEx.Tokenizer and Phoenix.Live.HTMLTokenizer
-  respectively.
+  Tokenize contents using EEx.Tokenizer and Phoenix.Live.HTMLTokenizer respectively.
 
   Given the following contents:
 
@@ -28,9 +27,9 @@ defmodule HeexFormatter.Phases.Tokenizer do
     {:text, "\n", %{column_end: 1, line_end: 3}}
   ]
 
-  Notice that it add custom indentifiers to eex expresions such as `eex_tag_open`
-  and `eex_tag_close` as well as a metadata to indentify if that is either a block
-  or not.
+  Notice that it adds custom identifiers to eex expresions such as `eex_tag_open`
+  and `eex_tag_close` as well as `block?` metadata to indentify if that is either
+  a block or not.
   """
   alias Phoenix.LiveView.HTMLTokenizer
 
