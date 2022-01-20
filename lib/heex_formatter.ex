@@ -17,7 +17,6 @@ defmodule HeexFormatter do
     {html_nodes, :text} = HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text)
 
     html_nodes
-    |> Enum.reverse()
     |> join_nodes(eex_tokenizer_nodes)
     |> HeexFormatter.Phases.EnsureLineBreaks.run([])
     |> HeexFormatter.Phases.Render.run([])
@@ -27,16 +26,12 @@ defmodule HeexFormatter do
     new_nodes =
       eex_tokenizer_nodes
       |> Enum.reduce([], fn
-        {:start_expr, line, column, '=', expr}, acc ->
-          [
-            {:text, "<%= #{String.trim(to_string(expr))} %>",
-             %{column: column + 1, line: line + 1}}
-            | acc
-          ]
+        {type, line, column, opt, expr}, acc
+        when type in [:start_expr, :expr, :end_expr, :middle_expr] ->
+          render = if(opt == '=', do: "=")
 
-        {:end_expr, line, column, _opts, expr}, acc ->
           [
-            {:text, "<% #{String.trim(to_string(expr))} %>",
+            {:text, "<%#{render} #{String.trim(to_string(expr))} %>",
              %{column: column + 1, line: line + 1}}
             | acc
           ]
@@ -44,9 +39,9 @@ defmodule HeexFormatter do
         _expr, acc ->
           acc
       end)
-      |> Enum.reverse()
 
     (html_nodes ++ new_nodes)
+    |> Enum.reverse()
     |> Enum.reject(&(&1 == {:text, "\n", %{}}))
     |> Enum.sort_by(fn
       {_, _, _, %{line: line, column: column}} ->
