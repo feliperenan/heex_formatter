@@ -190,21 +190,38 @@ defmodule HeexFormatterTest do
     """)
   end
 
-  test "parse eex" do
+  test "format when there are EEx tags" do
     assert_formatter_output(
       """
       <section>
         <%= live_redirect to: "url", id: "link", role: "button" do %>
           <div>     content</div>
         <% end %>
+        <p>
+        <%=
+        user.name
+        %></p>
+        <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>
       </section>
       """,
       """
       <section>
         <%= live_redirect to: "url", id: "link", role: "button" do %>
-        <div>
-          content
-        </div>
+          <div>
+            content
+          </div>
+        <% end %>
+        <p>
+          <%= user.name %>
+        </p>
+        <%= if true do %>
+          <p>
+            deu bom
+          </p>
+        <% else %>
+          <p>
+            deu ruim
+          </p>
         <% end %>
       </section>
       """
