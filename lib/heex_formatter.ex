@@ -28,13 +28,24 @@ defmodule HeexFormatter do
       |> Enum.reduce([], fn
         {type, line, column, opt, expr}, acc
         when type in [:start_expr, :expr, :end_expr, :middle_expr] ->
-          render = if(opt == '=', do: "=")
+          render = List.to_string(opt)
+          meta = %{column: column + 1, line: line + 1}
 
-          [
-            {:text, "<%#{render} #{String.trim(to_string(expr))} %>",
-             %{column: column + 1, line: line + 1}}
-            | acc
-          ]
+          if render == "=" do
+            tag = "<%= #{String.trim(to_string(expr))} %>"
+
+            meta =
+              if String.ends_with?(tag, "do %>") do
+                Map.put(meta, :block?, true)
+              else
+                meta
+              end
+
+            [{:eex_tag_open, tag, meta} | acc]
+          else
+            tag = "<% #{String.trim(to_string(expr))} %>"
+            [{:eex_tag_close, tag, meta} | acc]
+          end
 
         _expr, acc ->
           acc

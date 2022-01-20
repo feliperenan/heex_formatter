@@ -39,6 +39,8 @@ defmodule HeexFormatter.Phases.Render do
   def run(nodes, _opts) do
     opts = %{indentation: 0, previous_node: nil}
 
+    IO.inspect(nodes)
+
     result =
       Enum.reduce(nodes, %{string: "", opts: opts}, fn node, acc ->
         {node_as_string, opts} = node_to_string(node, acc.opts)
@@ -49,13 +51,6 @@ defmodule HeexFormatter.Phases.Render do
       end)
 
     result.string
-  end
-
-  defp node_to_string({:tag_open, eex_tag, _attrs, _meta}, opts)
-       when eex_tag in ["eexr", "eex"] do
-    indentation = indent_code(opts.indentation)
-
-    {"#{indentation}<#{eex_tag}>", opts}
   end
 
   defp node_to_string({:tag_open, tag, attrs, meta} = node, opts) do
@@ -114,16 +109,24 @@ defmodule HeexFormatter.Phases.Render do
     end
   end
 
-  defp node_to_string({:tag_close, eex_tag, _meta}, opts)
-       when eex_tag in ["eexr", "eex"] do
-    {"</#{eex_tag}>", opts}
-  end
-
   defp node_to_string({:tag_close, tag, _meta}, opts) do
     indent_code = indent_code(opts.indentation - 1)
     string = "#{indent_code}</#{tag}>"
 
     {string, %{opts | indentation: opts.indentation - 1}}
+  end
+
+  defp node_to_string({:eex_tag_open, tag, meta}, opts) do
+    block? = Map.get(meta, :block?, false)
+    indent_code = indent_code(opts.indentation)
+    indentation = if block?, do: opts.indentation + 1, else: opts.indentation
+
+    {indent_code <> tag, %{opts | indentation: indentation}}
+  end
+
+  defp node_to_string({:eex_tag_close, tag, _meta}, opts) do
+    indent_code = indent_code(opts.indentation - 1)
+    {indent_code <> tag, %{opts | indentation: opts.indentation - 1}}
   end
 
   defp indent_code(indentation) do

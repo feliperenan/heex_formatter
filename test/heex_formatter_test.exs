@@ -197,6 +197,10 @@ defmodule HeexFormatterTest do
         <%= live_redirect to: "url", id: "link", role: "button" do %>
           <div>     content</div>
         <% end %>
+        <p>
+        <%=
+        user.name
+        %></p>
       </section>
       """,
       """
@@ -206,6 +210,9 @@ defmodule HeexFormatterTest do
             content
           </div>
         <% end %>
+        <p>
+          <%= user.name %>
+        </p>
       </section>
       """
     )
@@ -253,7 +260,9 @@ defmodule HeexFormatterTest do
                 <%= if is_nil(product.reserved_for) do %>
                   <%= live_patch "Book", to: Routes.store_index_path(@socket, :edit, product.id) %>
                 <% else %>
-                  <button >Reserved</button>
+                  <button>
+                    Reserved
+                  </button>
                 <% end %>
               </div>
             </li>
