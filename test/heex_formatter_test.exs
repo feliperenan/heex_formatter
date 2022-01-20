@@ -271,7 +271,20 @@ defmodule HeexFormatterTest do
     )
   end
 
-  test "test" do
+  test "parse eex inside of html tags" do
+    assert_formatter_output(
+      """
+        <button {build_phx_attrs_dynamically()}>Test</button>
+      """,
+      """
+      <button {build_phx_attrs_dynamically()}>
+        Test
+      </button>
+      """
+    )
+  end
+
+  test "format long lines to be split into multiple lines" do
     assert_formatter_output(
       """
         <p><span>this is a long long long long long looooooong text</span><%= @product.value %> and more stuff over here</p>

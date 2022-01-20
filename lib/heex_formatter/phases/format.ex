@@ -167,6 +167,9 @@ defmodule HeexFormatter.Phases.Format do
 
   defp render_attribute(attr) do
     case attr do
+      {:root, {:expr, expr, _}} ->
+        ~s({#{expr}})
+
       {attr, {:string, value, _meta}} ->
         ~s(#{attr}="#{value}")
 
