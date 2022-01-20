@@ -190,7 +190,7 @@ defmodule HeexFormatterTest do
     """)
   end
 
-  test "parse eex" do
+  test "format when there are EEx tags" do
     assert_formatter_output(
       """
       <section>
@@ -202,10 +202,63 @@ defmodule HeexFormatterTest do
       """
       <section>
         <%= live_redirect to: "url", id: "link", role: "button" do %>
-        <div>
-          content
-        </div>
+          <div>
+            content
+          </div>
         <% end %>
+      </section>
+      """
+    )
+  end
+
+  test "proper format EEx tags" do
+    assert_formatter_output(
+      """
+
+      <section>
+        <ul>
+
+          <%= for product <- @products do %>
+            <li>
+              <img src={optimized_image_url(product.image_url)} />
+              <div class="px-5 mb-12">
+                <p><%= product.name %></p>
+                  <a href={product.external_url}>Product link </a>
+              <div class="w-full absolute bottom-0">
+                <%= if is_nil(product.reserved_for) do %>
+                      <%= live_patch "Book", to: Routes.store_index_path(@socket, :edit, product.id) %>
+                <% else %>
+                  <button >Reserved</button>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </section>
+      """,
+      """
+      <section>
+        <ul>
+          <%= for product <- @products do %>
+            <li>
+              <img src={optimized_image_url(product.image_url)} />
+              <div class="px-5 mb-12">
+                <p>
+                  <%= product.name %>
+                </p>
+                <a href={product.external_url}>
+                  Product link
+                </a>
+              <div class="w-full absolute bottom-0">
+                <%= if is_nil(product.reserved_for) do %>
+                  <%= live_patch "Book", to: Routes.store_index_path(@socket, :edit, product.id) %>
+                <% else %>
+                  <button >Reserved</button>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
       </section>
       """
     )
