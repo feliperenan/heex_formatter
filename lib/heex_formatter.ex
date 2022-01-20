@@ -14,6 +14,6 @@ defmodule HeexFormatter do
     contents
     |> HeexFormatter.Phases.Tokenizer.run(opts)
     |> HeexFormatter.Phases.EnsureLineBreaks.run(opts)
-    |> HeexFormatter.Phases.Render.run(opts)
+    |> HeexFormatter.Phases.Format.run(opts)
   end
 end
