@@ -95,21 +95,48 @@ defmodule HeexFormatter.Phases.Format do
   end
 
   defp token_to_string({:text, text, _meta}, state) do
-    case state.previous_token do
-      {:eex_tag_render, _tag, _meta} ->
-        %{state | html: state.html <> " " <> String.trim(text)}
+    text =
+      case state.previous_token do
+        {:eex_tag_render, _tag, _meta} ->
+          " " <> String.trim(text)
 
-      _token ->
-        indent = indent_expression(state.indentation)
-        %{state | html: state.html <> "\n" <> indent <> String.trim(text)}
-    end
+        # In case the previous token is a tag open, this will check if the text
+        # should either go to the current line or next line. Tag with attributes
+        # always go to the next line.
+        {:tag_open, _tag, attrs, _meta} ->
+          text = String.trim(text)
+
+          if String.length(text) < @default_line_length and Enum.empty?(attrs) do
+            text
+          else
+            indent = indent_expression(state.indentation)
+            "\n" <> indent <> text
+          end
+
+        _token ->
+          indent = indent_expression(state.indentation)
+          "\n" <> indent <> String.trim(text)
+      end
+
+    %{state | html: state.html <> text}
   end
 
   defp token_to_string({:tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
-    tag_closed = indent_expression("</#{tag}>", indentation)
 
-    %{state | html: state.html <> tag_closed, indentation: indentation}
+    case state.previous_token do
+      {:text, _text, _meta} ->
+        if tag_contains_line_break?(state.html, tag) do
+          tag_closed = indent_expression("</#{tag}>", indentation)
+          %{state | html: state.html <> tag_closed, indentation: indentation}
+        else
+          %{state | html: state.html <> "</#{tag}>", indentation: indentation}
+        end
+
+      _token ->
+        tag_closed = indent_expression("</#{tag}>", indentation)
+        %{state | html: state.html <> tag_closed, indentation: indentation}
+    end
   end
 
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
@@ -289,5 +316,29 @@ defmodule HeexFormatter.Phases.Format do
     code
     |> Code.format_string!(opts)
     |> IO.iodata_to_binary()
+  end
+
+  # Check if the given tag contains line breaks in the given html state.
+  #
+  # Useful to know if we should either close the tag in the current line or
+  # in the next line. For instance:
+  #
+  #   should close the tag in the current line.
+  #   <p>My title
+  #
+  #   should close the tag in the next line.
+  #   <p class="some-class">  \nShould break line
+  defp tag_contains_line_break?(html, tag) do
+    last_opened_tag = ~r/<\s*#{tag}[^>]*.(?!.*<\s*#{tag}[^>]*>(.*?).+).*/s
+
+    last_opened_tag
+    |> Regex.run(html)
+    |> case do
+      nil ->
+        false
+
+      [content] ->
+        String.contains?(content, "\n")
+    end
   end
 end

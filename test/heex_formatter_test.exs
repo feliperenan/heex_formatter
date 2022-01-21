@@ -56,12 +56,8 @@ defmodule HeexFormatterTest do
       """
       <section>
         <div>
-          <h1>
-            Hello
-          </h1>
-          <h2>
-            Sub title
-          </h2>
+          <h1>Hello</h1>
+          <h2>Sub title</h2>
         </div>
       </section>
       """
@@ -80,9 +76,7 @@ defmodule HeexFormatterTest do
       """
       <section>
         <div>
-          <h1>
-            Hello
-          </h1>
+          <h1>Hello</h1>
         </div>
       </section>
       """
@@ -113,9 +107,7 @@ defmodule HeexFormatterTest do
       """
       <section>
         <div>
-          <h1>
-            Hello
-          </h1>
+          <h1>Hello</h1>
         </div>
       </section>
       """
@@ -174,9 +166,7 @@ defmodule HeexFormatterTest do
         qux="...................."
         bla="......"
       >
-        <h1>
-          Title
-        </h1>
+        <h1>Title</h1>
       </div>
       """
     )
@@ -247,25 +237,17 @@ defmodule HeexFormatterTest do
       <section>
         <%= live_redirect to: "url", id: "link", role: "button" do %>
           <div>
-            <p>
-              content 1
-            </p>
-            <p>
-              content 2
-            </p>
+            <p>content 1</p>
+            <p>content 2</p>
           </div>
         <% end %>
         <p>
           <%= user.name %>
         </p>
         <%= if true do %>
-          <p>
-            deu bom
-          </p>
+          <p>deu bom</p>
         <% else %>
-          <p>
-            deu ruim
-          </p>
+          <p>deu ruim</p>
         <% end %>
       </section>
       """
@@ -300,12 +282,8 @@ defmodule HeexFormatterTest do
         </button>
       """,
       """
-      <p>
-        $ <%= @product.value %> in Dollars
-      </p>
-      <button>
-        Submit
-      </button>
+      <p>$ <%= @product.value %> in Dollars</p>
+      <button>Submit</button>
       """
     )
   end
@@ -330,9 +308,7 @@ defmodule HeexFormatterTest do
       """,
       """
       <p>
-        <span>
-          this is a long long long long long looooooong text
-        </span>
+        <span>this is a long long long long long looooooong text</span>
         <%= @product.value %> and more stuff over here
       </p>
       """
@@ -450,6 +426,34 @@ defmodule HeexFormatterTest do
         <%= text_input(f, :name) %>
       <% end %>
     </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "doesn't break lines when tag doesn't have any attrs and it fits" do
+    input = """
+      <p>
+      My title
+      </p>
+      <p>This is tooooooooooooooooooooooooooooooooooooooo looooooong annnnnnnnnnnnnnd should breeeeeak liines</p>
+      <p class="some-class">Should break line</p>
+      <p><%= @user.name %></p>
+      should not break when there it is not wrapped by any tags
+    """
+
+    expected = """
+    <p>My title</p>
+    <p>
+      This is tooooooooooooooooooooooooooooooooooooooo looooooong annnnnnnnnnnnnnd should breeeeeak liines
+    </p>
+    <p class="some-class">
+      Should break line
+    </p>
+    <p>
+      <%= @user.name %>
+    </p>
+    should not break when there it is not wrapped by any tags
     """
 
     assert_formatter_output(input, expected)
