@@ -10,26 +10,22 @@ defmodule HeexFormatter.Phases.Tokenizer do
 
   [
     {:tag_open, "section", [], %{column: 1, line: 1}},
-    {:text, "\n  ", %{column_end: 3, line_end: 2}},
     {:tag_open, "p", [], %{column: 3, line: 2}},
-    {:eex_tag_open, "<%= user.name ></p>\n  <%= if true do %>", {block?: true, column: 6, line: 1}},
+    {:eex_tag_render, "<%= user.name ></p>\n  <%= if true do %>", {block?: true, column: 6, line: 1}},
     {:text, " ", %{column_end: 2, line_end: 1}},
     {:tag_open, "p", [], %{column: 2, line: 1}},
     {:text, "deu bom", %{column_end: 12, line_end: 1}},
     {:tag_close, "p", %{column: 12, line: 1}},
-    {:eex_tag_close, "<% else %>", %{column: 35, line: 2}},
+    {:eex_tag, "<% else %>", %{column: 35, line: 2}},
     {:tag_open, "p", [], %{column: 1, line: 1}},
     {:text, " deu ruim ", %{column_end: 14, line_end: 1}},
     {:tag_close, "p", %{column: 14, line: 1}},
-    {:eex_tag_close, "<% end %>", %{column: 62, line: 2}},
-    {:text, "\n", %{column_end: 1, line_end: 2}},
+    {:eex_tag, "<% end %>", %{column: 62, line: 2}},
     {:tag_close, "section", %{column: 1, line: 2}},
-    {:text, "\n", %{column_end: 1, line_end: 3}}
   ]
 
-  Notice that it adds custom identifiers to eex expresions such as `eex_tag_open`
-  and `eex_tag_close` as well as `block?` metadata to indentify if that is either
-  a block or not.
+  Notice that it adds custom identifiers to eex expresions such as `eex_tag_render` and
+  `eex_tag` as well as `block?` metadata to indentify if that is either a block or not.
   """
   alias Phoenix.LiveView.HTMLTokenizer
 
@@ -56,8 +52,7 @@ defmodule HeexFormatter.Phases.Tokenizer do
 
     {type, tag} =
       if render == "=" do
-        tag = "<%= #{expr} %>"
-        {:eex_tag_render, tag}
+        {:eex_tag_render, "<%= #{expr} %>"}
       else
         {:eex_tag, "<% #{expr} %>"}
       end
