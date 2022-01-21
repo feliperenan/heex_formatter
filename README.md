@@ -27,11 +27,11 @@ Add it as plugin to your project `.formatter` file.
 [
   plugins: [HeexFormatter],
   import_deps: [:ecto, :phoenix],
-  inputs: ["*.{heex,ex,exs}", "priv/*/seeds.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  inputs: ["*.{heex,ex,exs}", "priv/*/seeds.exs", "{config,lib,test}/**/*.{heex,ex,exs}"],
   subdirectories: ["priv/*/migrations"]
 ]
 ```
-Now run 
+Now run
 ```elixir
 mix compile
 ```
