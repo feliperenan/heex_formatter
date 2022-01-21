@@ -22,8 +22,12 @@ defmodule HeexFormatter.Phases.Format do
   step before writting it to a file.
   """
 
+  alias HeexFormatter.Core.EexFormatter
+
   # Use 2 spaces for a tab
   @tab "  "
+
+  def tab, do: @tab
 
   # Line length of opening tags before splitting attributes onto their own line
   @default_line_length 98
@@ -105,14 +109,17 @@ defmodule HeexFormatter.Phases.Format do
 
   # eex_tag_render represents <%=
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
+    formatted_tag = EexFormatter.format(tag, indentation: state.indentation)
+
     case state.previous_token do
       {:text, _text, _meta} ->
-        eex_tag = " " <> tag
+        eex_tag = " " <> formatted_tag
+
         %{state | html: state.html <> eex_tag}
 
       _token ->
         indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
-        eex_tag = indent_expression(tag, state.indentation)
+        eex_tag = indent_expression(formatted_tag, state.indentation)
 
         %{state | html: state.html <> eex_tag, indentation: indentation}
     end

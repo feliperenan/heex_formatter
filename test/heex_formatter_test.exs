@@ -328,4 +328,24 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle live_component format" do
+    input = """
+    <div>
+    <%= live_component(MyAppWeb.Components.SearchBox, id: :search_box, on_select: :user_selected, label: gettext("Search User")) %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <%= live_component(MyAppWeb.Components.SearchBox,
+        id: :search_box,
+        on_select: :user_selected,
+        label: gettext("Search User")
+      ) %>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end
