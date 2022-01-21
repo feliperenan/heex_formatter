@@ -98,8 +98,7 @@ defmodule HeexFormatter.Phases.Format do
 
   defp token_to_string({:tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
-    indent = indent_expression(indentation)
-    tag_closed = "\n#{indent}</#{tag}>"
+    tag_closed = indent_expression("</#{tag}>", indentation)
 
     %{state | html: state.html <> tag_closed, indentation: indentation}
   end
@@ -113,8 +112,7 @@ defmodule HeexFormatter.Phases.Format do
 
       _token ->
         indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
-        indent = indent_expression(state.indentation)
-        eex_tag = "\n" <> indent <> tag
+        eex_tag = indent_expression(tag, state.indentation)
 
         %{state | html: state.html <> eex_tag, indentation: indentation}
     end
@@ -122,16 +120,14 @@ defmodule HeexFormatter.Phases.Format do
 
   # eex_tag represents <% %>
   defp token_to_string({:eex_tag, "<% else %>" = tag, _meta}, state) do
-    indent = indent_expression(state.indentation - 1)
-    eex_tag = "\n" <> indent <> tag
+    eex_tag = indent_expression(tag, state.indentation - 1)
 
     %{state | html: state.html <> eex_tag}
   end
 
   defp token_to_string({:eex_tag, "<% end %>" = tag, _meta}, state) do
     indentation = state.indentation - 1
-    indent = indent_expression(indentation)
-    eex_tag = "\n" <> indent <> tag
+    eex_tag = indent_expression(tag, indentation)
 
     %{state | html: state.html <> eex_tag, indentation: indentation}
   end
@@ -139,20 +135,34 @@ defmodule HeexFormatter.Phases.Format do
   defp token_to_string({:eex_tag, tag, _meta}, state) do
     case state.previous_token do
       {type, _tag, _meta} when type in [:eex_tag_render, :eex_tag] ->
-        indent = indent_expression(state.indentation - 1)
-        eex_tag = "\n" <> indent <> tag
+        eex_tag = indent_expression(tag, state.indentation - 1)
 
         %{state | html: state.html <> eex_tag}
 
       _token ->
         indentation = state.indentation - 1
-        indent = indent_expression(indentation)
-        eex_tag = "\n" <> indent <> tag
+        eex_tag = indent_expression(tag, indentation)
 
         %{state | html: state.html <> eex_tag, indentation: indentation}
     end
   end
 
+  # Helper for indenting the given expression according to the given indentation.
+  #
+  # Examples
+  #
+  #    iex> indent_expression("<%= @user.name %>", 1)
+  #    "\n  <%= @user.name %>"
+  defp indent_expression(expression, indentation) do
+    "\n" <> String.duplicate(@tab, indentation) <> expression
+  end
+
+  # Helper for duplicating `@tab` so it can be used as indentation.
+  #
+  # Examples
+  #
+  #    iex> indent_expression(2)
+  #    "  "
   defp indent_expression(indentation) do
     String.duplicate(@tab, indentation)
   end
