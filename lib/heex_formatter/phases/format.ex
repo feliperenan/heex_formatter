@@ -83,14 +83,27 @@ defmodule HeexFormatter.Phases.Format do
   end
 
   defp token_to_string({:text, text, _meta}, state) do
+    # TODO: accept default_line_length as option.
+    max_line_length = @default_line_length
+    indent = indent_expression(state.indentation)
+
+    # Check if the text fits in the same line. If it doesn't, it will add a
+    # line break in the first space after the `max_line_length`.
+    text =
+      if String.length(text) > max_line_length do
+        regex = ~r/(.{#{max_line_length},}?)\s/
+        Regex.replace(regex, String.trim(text), "\\g{1}\n#{indent}")
+      else
+        String.trim(text)
+      end
+
     text =
       case state.previous_token do
         {:eex_tag_render, _tag, _meta} ->
-          " " <> String.trim(text)
+          " " <> text
 
         _token ->
-          indent = indent_expression(state.indentation)
-          "\n" <> indent <> String.trim(text)
+          "\n" <> indent <> text
       end
 
     %{state | html: state.html <> text}
