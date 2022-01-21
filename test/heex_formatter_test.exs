@@ -301,4 +301,31 @@ defmodule HeexFormatterTest do
       """
     )
   end
+
+  test "handle eex case statement" do
+    input = """
+    <div>
+    <%= case {:ok, "elixir"} do %>
+    <% {:ok, text} -> %>
+    <%= text %>
+
+    <% {:error, error} -> %>
+    <%= error %>
+    <% end %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <%= case {:ok, "elixir"} do %>
+      <% {:ok, text} -> %>
+        <%= text %>
+      <% {:error, error} -> %>
+        <%= error %>
+      <% end %>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end

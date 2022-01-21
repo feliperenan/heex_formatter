@@ -50,19 +50,19 @@ defmodule HeexFormatter.Phases.Tokenizer do
 
   defp tokenize({type, line, column, opt, expr}, acc) when type in @eex_expr do
     render = List.to_string(opt)
-    meta = %{column: column, line: line}
-    expr = String.trim(to_string(expr))
+    expr = expr |> List.to_string() |> String.trim()
+    block? = String.ends_with?(expr, "do") || String.ends_with?(expr, "->")
+    meta = %{column: column, line: line, block?: block?}
 
-    token =
+    {type, tag} =
       if render == "=" do
         tag = "<%= #{expr} %>"
-        meta = Map.put(meta, :block?, String.ends_with?(tag, "do %>"))
-        {:eex_tag_open, tag, meta}
+        {:eex_tag_render, tag}
       else
-        {:eex_tag_close, "<% #{expr} %>", meta}
+        {:eex_tag, "<% #{expr} %>"}
       end
 
-    {[token], acc}
+    {[{type, tag, meta}], acc}
   end
 
   defp tokenize(_node, acc) do
