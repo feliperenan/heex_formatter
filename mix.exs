@@ -22,7 +22,8 @@ defmodule HeexFormatter.MixProject do
   defp deps do
     [
       {:phoenix_live_view, "~> 0.17.5"},
-      {:jason, "~> 1.3"}
+      {:jason, "~> 1.3"},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]
   end
 end

@@ -2,6 +2,8 @@ defmodule HeexFormatterTest do
   use ExUnit.Case
   doctest HeexFormatter
 
+  alias Mix.Tasks.Format, as: MixFormat
+
   # Write a unique file and .formatter.exs for a test, run `mix format` on the
   # file, and assert whether the input matches the expected output.
   defp assert_formatter_output(input_ex, expected, dot_formatter_opts \\ []) do
@@ -18,7 +20,7 @@ defmodule HeexFormatterTest do
     File.write!(ex_path, input_ex)
     File.write!(dot_formatter_path, inspect(dot_formatter_opts))
 
-    Mix.Tasks.Format.run([ex_path, "--dot-formatter", dot_formatter_path])
+    MixFormat.run([ex_path, "--dot-formatter", dot_formatter_path])
 
     assert File.read!(ex_path) == expected
   end
