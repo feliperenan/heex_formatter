@@ -27,7 +27,7 @@ Add it as plugin to your project `.formatter` file.
 [
   plugins: [HeexFormatter],
   import_deps: [:ecto, :phoenix],
-  inputs: ["*.{ex,exs}", "priv/*/seeds.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  inputs: ["*.{heex,ex,exs}", "priv/*/seeds.exs", "{config,lib,test}/**/*.{ex,exs}"],
   subdirectories: ["priv/*/migrations"]
 ]
 ```
