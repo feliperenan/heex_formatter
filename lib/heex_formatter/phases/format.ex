@@ -19,7 +19,7 @@ defmodule HeexFormatter.Phases.Format do
   "<section>\n  <div>\n    <h1>\n      Hello\n    </h1>\n  </div>\n</section>\n"
 
   Notice that this string is formatted. So this is supposed to be the last
-  step before writting it to a file.
+  step before writing it to a file.
   """
 
   # Use 2 spaces for a tab
@@ -34,7 +34,8 @@ defmodule HeexFormatter.Phases.Format do
       html: "",
       previous_token: nil,
       indentation: 0,
-      mode: :html
+      mode: :html,
+      line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length
     }
 
     result =
@@ -46,7 +47,7 @@ defmodule HeexFormatter.Phases.Format do
         %{new_state | previous_token: token}
       end)
 
-    # That is because we are adding "\n" everytime a tag is open. Then we need to extract
+    # That is because we are adding "\n" every time a tag is open. Then we need to extract
     # "\n" from the first line and put this in the end of the line.
     "\n" <> html = result.html
     html <> "\n"
@@ -57,7 +58,7 @@ defmodule HeexFormatter.Phases.Format do
     indent = indent_expression(state.indentation)
 
     tag_opened =
-      if put_attrs_in_separeted_lines?(node) do
+      if put_attrs_in_separeted_lines?(node, state.line_length) do
         tag_prefix = "#{indent}<#{tag}\n"
         tag_suffix = if self_closed?, do: "\n#{indent}/>", else: "\n#{indent}>"
         indent_attrs = indent_expression(state.indentation + 1)
@@ -122,8 +123,7 @@ defmodule HeexFormatter.Phases.Format do
 
   defp token_to_string({:tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
-    indent = indent_expression(indentation)
-    tag_closed = "\n#{indent}</#{tag}>"
+    tag_closed = indent_expression("</#{tag}>", indentation)
 
     %{state | html: state.html <> tag_closed, indentation: indentation}
   end
@@ -141,8 +141,7 @@ defmodule HeexFormatter.Phases.Format do
 
       _token ->
         indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
-        indent = indent_expression(state.indentation)
-        eex_tag = "\n" <> indent <> tag
+        eex_tag = indent_expression(tag, state.indentation)
 
         %{state | html: state.html <> eex_tag, indentation: indentation}
     end
@@ -150,16 +149,14 @@ defmodule HeexFormatter.Phases.Format do
 
   # eex_tag represents <% %>
   defp token_to_string({:eex_tag, "<% else %>" = tag, _meta}, state) do
-    indent = indent_expression(state.indentation - 1)
-    eex_tag = "\n" <> indent <> tag
+    eex_tag = indent_expression(tag, state.indentation - 1)
 
     %{state | html: state.html <> eex_tag}
   end
 
   defp token_to_string({:eex_tag, "<% end %>" = tag, _meta}, state) do
     indentation = state.indentation - 1
-    indent = indent_expression(indentation)
-    eex_tag = "\n" <> indent <> tag
+    eex_tag = indent_expression(tag, indentation)
 
     %{state | html: state.html <> eex_tag, indentation: indentation}
   end
@@ -167,20 +164,34 @@ defmodule HeexFormatter.Phases.Format do
   defp token_to_string({:eex_tag, tag, _meta}, state) do
     case state.previous_token do
       {type, _tag, _meta} when type in [:eex_tag_render, :eex_tag] ->
-        indent = indent_expression(state.indentation - 1)
-        eex_tag = "\n" <> indent <> tag
+        eex_tag = indent_expression(tag, state.indentation - 1)
 
         %{state | html: state.html <> eex_tag}
 
       _token ->
         indentation = state.indentation - 1
-        indent = indent_expression(indentation)
-        eex_tag = "\n" <> indent <> tag
+        eex_tag = indent_expression(tag, indentation)
 
         %{state | html: state.html <> eex_tag, indentation: indentation}
     end
   end
 
+  # Helper for indenting the given expression according to the given indentation.
+  #
+  # Examples
+  #
+  #    iex> indent_expression("<%= @user.name %>", 1)
+  #    "\n  <%= @user.name %>"
+  defp indent_expression(expression, indentation) do
+    "\n" <> String.duplicate(@tab, indentation) <> expression
+  end
+
+  # Helper for duplicating `@tab` so it can be used as indentation.
+  #
+  # Examples
+  #
+  #    iex> indent_expression(2)
+  #    "  "
   defp indent_expression(indentation) do
     String.duplicate(@tab, max(0, indentation))
   end
@@ -192,9 +203,7 @@ defmodule HeexFormatter.Phases.Format do
     |> String.trim_trailing()
   end
 
-  defp put_attrs_in_separeted_lines?({:tag_open, tag, attrs, meta}) do
-    # TODO: accept max_line_length as option.
-    max_line_length = @default_line_length
+  defp put_attrs_in_separeted_lines?({:tag_open, tag, attrs, meta}, max_line_length) do
     self_closed? = Map.get(meta, :self_close, false)
 
     # Calculate attrs length. It considers 1 space between each attribute, that
