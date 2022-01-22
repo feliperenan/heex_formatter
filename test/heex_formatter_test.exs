@@ -182,6 +182,43 @@ defmodule HeexFormatterTest do
     )
   end
 
+  test "make the line_length configurable" do
+    assert_formatter_doesnt_change("""
+    <Component foo="..........." bar="..............." baz="............" qux="..................." />
+    """)
+
+    assert_formatter_output(
+      """
+      <Component foo="..........." bar="..............." baz="............" qux="..................." />
+      """,
+      """
+      <Component
+        foo="..........."
+        bar="..............."
+        baz="............"
+        qux="..................."
+      />
+      """,
+      line_length: 20
+    )
+
+    assert_formatter_output(
+      """
+      <Component foo="..........." bar="..............." baz="............" qux="..................." />
+      """,
+      """
+      <Component
+        foo="..........."
+        bar="..............."
+        baz="............"
+        qux="..................."
+      />
+      """,
+      heex_formatter_line_length: 20,
+      line_length: 2000,
+    )
+  end
+
   test "single line inputs are not changed" do
     assert_formatter_doesnt_change("""
     <div />
