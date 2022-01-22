@@ -25,8 +25,6 @@ defmodule HeexFormatter.Phases.Format do
   # Use 2 spaces for a tab
   @tab "  "
 
-  def tab, do: @tab
-
   # Line length of opening tags before splitting attributes onto their own line
   @default_line_length 98
 
