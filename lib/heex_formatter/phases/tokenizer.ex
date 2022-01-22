@@ -37,8 +37,7 @@ defmodule HeexFormatter.Phases.Tokenizer do
   end
 
   defp tokenize({:text, _line, _column, text}, acc) do
-    string = IO.iodata_to_binary(text)
-
+    string = List.to_string(text)
     {tokens, _} = HTMLTokenizer.tokenize(string, "nofile", 0, [], [], :text)
     {tokens |> Enum.reject(&line_break?/1) |> Enum.reverse(), acc}
   end
