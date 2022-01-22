@@ -41,9 +41,12 @@ defmodule HeexFormatter.Phases.Tokenizer do
   end
 
   defp tokenize({:text, _line, _column, text}, acc) do
-    string = List.to_string(text)
-    {tokens, :text} = HTMLTokenizer.tokenize(string, "nofile", 0, [], [], :text)
-    {tokens |> Enum.reject(&line_break?/1) |> Enum.reverse(), acc}
+    string = IO.iodata_to_binary(text)
+
+    case HTMLTokenizer.tokenize(string, "nofile", 0, [], [], :text) do
+      {tokens, :text} -> {tokens |> Enum.reject(&line_break?/1) |> Enum.reverse(), acc}
+      {tokens, :script} -> {tokens |> Enum.reject(&line_break?/1) |> Enum.reverse(), acc}
+    end
   end
 
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]

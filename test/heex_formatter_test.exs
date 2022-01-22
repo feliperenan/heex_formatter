@@ -328,4 +328,50 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle inline java script with eex" do
+    input = """
+    <div>
+      <script>
+    function my_confirm(event) {
+      if (!confirm('<%= "confirmation text" %>')) {
+        event.stopPropagation()
+      }
+      return false;
+    };
+    </script>
+    <script>
+    function my_confirm(event) {
+      if (!confirm('foo')) {
+        event.stopPropagation()
+      }
+      return false;
+    };
+    </script>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <script>
+      function my_confirm(event) {
+        if (!confirm('<%= "confirmation text" %>')) {
+          event.stopPropagation()
+        }
+        return false;
+      };
+      </script>
+      <script>
+      function my_confirm(event) {
+        if (!confirm('foo')) {
+          event.stopPropagation()
+        }
+        return false;
+      };
+      </script>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end
