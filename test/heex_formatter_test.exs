@@ -411,4 +411,47 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle live_component format" do
+    input = """
+    <div>
+    <%= live_component(MyAppWeb.Components.SearchBox, id: :search_box, on_select: :user_selected, label: gettext("Search User")) %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <%= live_component(MyAppWeb.Components.SearchBox,
+        id: :search_box,
+        on_select: :user_selected,
+        label: gettext("Search User")
+      ) %>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle eex form format" do
+    input = """
+    <div>
+    <%= form_for @changeset, Routes.user_path(@conn, :create), [class: "w-full p-3 rounded-md", phx_change: "on_change"], fn f -> %>
+      <%= text_input f, :name %>
+    <% end %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <%= form_for @changeset,
+               Routes.user_path(@conn, :create),
+               [class: "w-full p-3 rounded-md", phx_change: "on_change"],
+               fn f -> %>
+        <%= text_input(f, :name) %>
+      <% end %>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end
