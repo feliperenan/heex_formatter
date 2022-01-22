@@ -29,8 +29,13 @@ defmodule HeexFormatter.Phases.Format do
   @default_line_length 98
 
   @spec run(list(), Keyword.t()) :: String.t()
-  def run(tokens, _opts) do
-    initial_state = %{html: "", previous_token: nil, indentation: 0}
+  def run(tokens, opts) do
+    initial_state = %{
+      html: "",
+      previous_token: nil,
+      indentation: 0,
+      line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length
+    }
 
     result =
       Enum.reduce(tokens, initial_state, fn token, state ->
@@ -52,7 +57,7 @@ defmodule HeexFormatter.Phases.Format do
     indent = indent_expression(state.indentation)
 
     tag_opened =
-      if put_attrs_in_separeted_lines?(node) do
+      if put_attrs_in_separeted_lines?(node, state.line_length) do
         tag_prefix = "#{indent}<#{tag}\n"
         tag_suffix = if self_closed?, do: "\n#{indent}/>", else: "\n#{indent}>"
         indent_attrs = indent_expression(state.indentation + 1)
@@ -167,9 +172,7 @@ defmodule HeexFormatter.Phases.Format do
     String.duplicate(@tab, indentation)
   end
 
-  defp put_attrs_in_separeted_lines?({:tag_open, tag, attrs, meta}) do
-    # TODO: accept max_line_length as option.
-    max_line_length = @default_line_length
+  defp put_attrs_in_separeted_lines?({:tag_open, tag, attrs, meta}, max_line_length) do
     self_closed? = Map.get(meta, :self_close, false)
 
     # Calculate attrs length. It considers 1 space between each attribute, that

@@ -35,5 +35,20 @@ Now run
 ```elixir
 mix compile
 ```
+### options
+
+#### line_lenght
+
+The formatter default the a maximum line_length of 98 characters, which can be overwritten with the `line_lenght` option in the `.formatter` file.
+
+Set `heex_line_length` to only set the line:lenght for the heex formatter.
+
+```elixir
+[
+  plugins: [HeexFormatter],
+  inputs: ["{config,lib,test}/**/*.{ex,exs}"],
+  heex_line_length: 300
+]
+```
 
 Inspired by [Surface Formatter](https://github.com/surface-ui/surface_formatter).
