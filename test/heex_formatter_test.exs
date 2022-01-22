@@ -348,4 +348,27 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle eex form format" do
+    input = """
+    <div>
+    <%= form_for @changeset, Routes.user_path(@conn, :create), [class: "w-full p-3 rounded-md", phx_change: "on_change"], fn f -> %>
+      <%= text_input f, :name %>
+    <% end %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <%= form_for @changeset,
+               Routes.user_path(@conn, :create),
+               [class: "w-full p-3 rounded-md", phx_change: "on_change"],
+               fn f -> %>
+        <%= text_input(f, :name) %>
+      <% end %>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end
