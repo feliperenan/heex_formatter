@@ -34,6 +34,7 @@ defmodule HeexFormatter.Phases.Format do
       html: "",
       previous_token: nil,
       indentation: 0,
+      mode: :html,
       line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length
     }
 
@@ -82,23 +83,36 @@ defmodule HeexFormatter.Phases.Format do
         end
       end
 
-    indentation = if self_closed?, do: state.indentation, else: state.indentation + 1
+    state =
+      cond do
+        !self_closed? and tag == "script" -> %{state | mode: :script}
+        self_closed? -> state
+        true -> %{state | indentation: state.indentation + 1}
+      end
 
-    %{state | html: state.html <> "\n" <> tag_opened, indentation: indentation}
+    %{state | html: state.html <> "\n" <> tag_opened}
+  end
+
+  defp token_to_string({:text, text, _meta}, %{mode: :script} = state) do
+    %{state | html: state.html <> text}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
-    text =
-      case state.previous_token do
-        {:eex_tag_render, _tag, _meta} ->
-          " " <> String.trim(text)
+    case state.previous_token do
+      {:eex_tag_render, _tag, _meta} ->
+        %{state | html: state.html <> " " <> String.trim(text)}
 
-        _token ->
-          indent = indent_expression(state.indentation)
-          "\n" <> indent <> String.trim(text)
-      end
+      _token ->
+        indent = indent_expression(state.indentation)
+        %{state | html: state.html <> "\n" <> indent <> String.trim(text)}
+    end
+  end
 
-    %{state | html: state.html <> text}
+  defp token_to_string({:tag_close, "script" = tag, _meta}, state) do
+    indent = indent_expression(state.indentation)
+    tag_closed = "#{indent}</#{tag}>"
+
+    %{state | html: state.html <> tag_closed, mode: :html}
   end
 
   defp token_to_string({:tag_close, tag, _meta}, state) do
@@ -109,6 +123,10 @@ defmodule HeexFormatter.Phases.Format do
   end
 
   # eex_tag_render represents <%=
+  defp token_to_string({:eex_tag_render, tag, _meta}, %{mode: :script} = state) do
+    %{state | html: state.html <> String.trim(tag)}
+  end
+
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
     formatted_tag = format_eex(tag, state)
 
