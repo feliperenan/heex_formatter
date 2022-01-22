@@ -215,7 +215,7 @@ defmodule HeexFormatterTest do
       />
       """,
       heex_line_length: 20,
-      line_length: 2000,
+      line_length: 2000
     )
   end
 
