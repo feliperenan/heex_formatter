@@ -342,25 +342,37 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  test "handle script tag but doesn't touch JS code" do
+  test "handle preformatted tags tag but doesn't touch JS code" do
     input = """
     <div>
     <script>
     function my_confirm(event) {
       if (!confirm(' <%= "confirmation text" %> ')) {
-        event.stopPropagation()
-      }
+      event.stopPropagation()
+    }
       return false;
     };
     </script>
     <script>
     function my_confirm(event) {
-      if (!confirm('foo')) {
-        event.stopPropagation()
-      }
+      if (!confirm('foo')) { event.stopPropagation() }
       return false;
     };
     </script>
+    <style>
+    h1 {
+      font-weight: 900;
+    }
+    </style>
+    <pre>
+    break
+       break
+    </pre>
+    <code>
+    public static void main(String[] args) {
+      System.out.println("Moin")
+    }
+    </code>
     </div>
     """
 
@@ -369,19 +381,31 @@ defmodule HeexFormatterTest do
       <script>
     function my_confirm(event) {
       if (!confirm(' <%= "confirmation text" %> ')) {
-        event.stopPropagation()
-      }
+      event.stopPropagation()
+    }
       return false;
     };
       </script>
       <script>
     function my_confirm(event) {
-      if (!confirm('foo')) {
-        event.stopPropagation()
-      }
+      if (!confirm('foo')) { event.stopPropagation() }
       return false;
     };
       </script>
+      <style>
+    h1 {
+      font-weight: 900;
+    }
+      </style>
+      <pre>
+    break
+       break
+      </pre>
+      <code>
+    public static void main(String[] args) {
+      System.out.println("Moin")
+    }
+      </code>
     </div>
     """
 

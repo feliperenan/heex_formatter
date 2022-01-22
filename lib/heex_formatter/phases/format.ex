@@ -25,6 +25,8 @@ defmodule HeexFormatter.Phases.Format do
   # Use 2 spaces for a tab
   @tab "  "
 
+  @preformatted_tags ~w(script code style pre)
+
   # Line length of opening tags before splitting attributes onto their own line
   @default_line_length 98
 
@@ -87,18 +89,14 @@ defmodule HeexFormatter.Phases.Format do
     %{state | html: state.html <> "\n" <> tag_opened, indentation: indentation}
   end
 
-  defp token_to_string(
-         {:text, text, _meta},
-         %{previous_token: {:tag_open, "script", _, _}} = state
-       ) do
-    %{state | html: state.html <> String.trim_trailing(text)}
-  end
-
   defp token_to_string({:text, text, _meta}, state) do
     text =
       case state.previous_token do
         {:eex_tag_render, _tag, _meta} ->
           " " <> String.trim(text)
+
+        {:tag_open, tag, _, _} when tag in @preformatted_tags ->
+          String.trim_trailing(text)
 
         # In case the previous token is a tag open, this will check if the text
         # should either go to the current line or next line. Tag with attributes
