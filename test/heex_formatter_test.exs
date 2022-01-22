@@ -369,7 +369,7 @@ defmodule HeexFormatterTest do
   test "handle inline java script with eex" do
     input = """
     <div>
-      <script>
+    <script>
     function my_confirm(event) {
       if (!confirm('<%= "confirmation text" %>')) {
         event.stopPropagation()
@@ -391,20 +391,20 @@ defmodule HeexFormatterTest do
     expected = """
     <div>
       <script>
-      function my_confirm(event) {
-        if (!confirm('<%= "confirmation text" %>')) {
-          event.stopPropagation()
-        }
-        return false;
-      };
+    function my_confirm(event) {
+      if (!confirm('<%= "confirmation text" %>')) {
+        event.stopPropagation()
+      }
+      return false;
+    };
       </script>
       <script>
-      function my_confirm(event) {
-        if (!confirm('foo')) {
-          event.stopPropagation()
-        }
-        return false;
-      };
+    function my_confirm(event) {
+      if (!confirm('foo')) {
+        event.stopPropagation()
+      }
+      return false;
+    };
       </script>
     </div>
     """

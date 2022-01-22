@@ -84,22 +84,17 @@ defmodule HeexFormatter.Phases.Format do
       end
 
     state =
-      if self_closed? do
-        state
-      else
-        if tag == "script" do
-          %{state | mode: :script}
-        else
-          %{state | indentation: state.indentation + 1}
-        end
+      cond do
+        !self_closed? and tag == "script" -> %{state | mode: :script}
+        self_closed? -> state
+        true -> %{state | indentation: state.indentation + 1}
       end
 
     %{state | html: state.html <> "\n" <> tag_opened}
   end
 
   defp token_to_string({:text, text, _meta}, %{mode: :script} = state) do
-    indent = indent_expression(state.indentation)
-    %{state | html: state.html <> indent_script(indent, text)}
+    %{state | html: state.html <> text}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
@@ -114,11 +109,10 @@ defmodule HeexFormatter.Phases.Format do
   end
 
   defp token_to_string({:tag_close, "script" = tag, _meta}, state) do
-    indentation = state.indentation
-    indent = indent_expression(indentation)
-    tag_closed = "\n#{indent}</#{tag}>"
+    indent = indent_expression(state.indentation)
+    tag_closed = "#{indent}</#{tag}>"
 
-    %{state | html: state.html <> tag_closed, indentation: indentation}
+    %{state | html: state.html <> tag_closed, mode: :html}
   end
 
   defp token_to_string({:tag_close, tag, _meta}, state) do
@@ -196,14 +190,7 @@ defmodule HeexFormatter.Phases.Format do
   #    iex> indent_expression(2)
   #    "  "
   defp indent_expression(indentation) do
-    String.duplicate(@tab, max(0, indentation))
-  end
-
-  defp indent_script(indent, text) do
-    text
-    |> String.split("\n")
-    |> Enum.map_join("\n" <> indent, &String.trim_trailing/1)
-    |> String.trim_trailing()
+    String.duplicate(@tab, indentation)
   end
 
   defp put_attrs_in_separeted_lines?({:tag_open, tag, attrs, meta}, max_line_length) do
