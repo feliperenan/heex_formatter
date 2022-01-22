@@ -216,6 +216,18 @@ defmodule HeexFormatter.Phases.Format do
     end
   end
 
+  # Format a given eex code to match provided indentation in HEEx template.
+  #
+  # Given the following code:
+  #
+  # "form_for @changeset, Routes.user_path(@conn, :create), [class: "w-full", phx_change: "on_change"], fn f ->"
+  #
+  # The following string will be returned:
+  #
+  # <%= form_for @changeset,
+  #            Routes.user_path(@conn, :create),
+  #            [class: \"w-full\", phx_change: \"on_change\"],
+  #            fn f -> %>
   defp format_eex(code, state) do
     indentation = state.indentation
 
