@@ -110,14 +110,17 @@ defmodule HeexFormatter.Phases.Format do
 
   # eex_tag_render represents <%=
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
+    formatted_tag = format_eex(tag, state)
+
     case state.previous_token do
       {:text, _text, _meta} ->
-        eex_tag = " " <> tag
+        eex_tag = " " <> formatted_tag
+
         %{state | html: state.html <> eex_tag}
 
       _token ->
         indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
-        eex_tag = indent_expression(tag, state.indentation)
+        eex_tag = indent_expression(formatted_tag, state.indentation)
 
         %{state | html: state.html <> eex_tag, indentation: indentation}
     end
@@ -214,5 +217,74 @@ defmodule HeexFormatter.Phases.Format do
       {attr, nil} ->
         ~s(#{attr})
     end
+  end
+
+  # Format a given eex code to match provided indentation in HEEx template.
+  #
+  # Given the following code:
+  #
+  # "form_for @changeset, Routes.user_path(@conn, :create), [class: "w-full", phx_change: "on_change"], fn f ->"
+  #
+  # The following string will be returned:
+  #
+  # <%= form_for @changeset,
+  #            Routes.user_path(@conn, :create),
+  #            [class: \"w-full\", phx_change: \"on_change\"],
+  #            fn f -> %>
+  defp format_eex(code, state) do
+    indentation = state.indentation
+
+    code = String.replace(code, ["<%= ", " %>"], "")
+
+    formatted_code =
+      cond do
+        code =~ ~r/\sdo\z/m -> format_ends_with_do(code, [])
+        String.ends_with?(code, "->") -> format_ends_with_priv_fn(code, [])
+        true -> run_formatter(code, [])
+      end
+
+    formatted_code =
+      Enum.join(
+        String.split(formatted_code, "\n"),
+        "\n" <> String.duplicate(@tab, indentation)
+      )
+
+    "<%= #{formatted_code} %>"
+  end
+
+  defp format_ends_with_do(code, formatter_opts) do
+    (code <> "\nend")
+    |> run_formatter(formatter_opts)
+    |> String.replace_trailing("\nend", "")
+  end
+
+  defp format_ends_with_priv_fn(code, formatter_opts) do
+    (code <> "\nnil\nend")
+    |> run_formatter(formatter_opts)
+    |> String.trim()
+    |> remove_added_code()
+    |> String.split("\n")
+    |> Enum.slice(0..-3)
+    |> Enum.join("\n")
+  end
+
+  defp remove_added_code(code) do
+    if String.ends_with?(code, ")") do
+      fn_name_length = String.split(code, "(") |> Enum.at(0) |> String.length()
+      extra_space = String.duplicate(" ", fn_name_length + 1)
+
+      code
+      |> String.replace("(\n ", "", global: false)
+      |> String.replace("\n  ", "\n" <> extra_space)
+      |> String.replace_trailing("\n)", "")
+    else
+      code
+    end
+  end
+
+  defp run_formatter(code, opts) do
+    code
+    |> Code.format_string!(opts)
+    |> IO.iodata_to_binary()
   end
 end
