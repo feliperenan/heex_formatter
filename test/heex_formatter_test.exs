@@ -214,7 +214,7 @@ defmodule HeexFormatterTest do
         qux="..................."
       />
       """,
-      heex_formatter_line_length: 20,
+      heex_line_length: 20,
       line_length: 2000,
     )
   end

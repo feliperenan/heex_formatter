@@ -41,13 +41,13 @@ mix compile
 
 The formatter default the a maximum line_length of 98 characters, which can be overwritten with the `line_lenght` option in the `.formatter` file.
 
-Set `heex_formatter_line_length` to only set the line:lenght for the heex formatter.
+Set `heex_line_length` to only set the line:lenght for the heex formatter.
 
 ```elixir
 [
   plugins: [HeexFormatter],
   inputs: ["{config,lib,test}/**/*.{ex,exs}"],
-  heex_formatter_line_length: 300
+  heex_line_length: 300
 ]
 ```
 

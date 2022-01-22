@@ -34,7 +34,7 @@ defmodule HeexFormatter.Phases.Format do
       html: "",
       previous_token: nil,
       indentation: 0,
-      line_length: opts[:heex_formatter_line_length] || opts[:line_length] || @default_line_length
+      line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length
     }
 
     result =
