@@ -105,7 +105,7 @@ defmodule HeexFormatter.Phases.Format do
 
   # eex_tag_render represents <%=
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
-    formatted_tag = format_eex(tag, indentation: state.indentation)
+    formatted_tag = format_eex(tag, state)
 
     case state.previous_token do
       {:text, _text, _meta} ->
@@ -216,8 +216,8 @@ defmodule HeexFormatter.Phases.Format do
     end
   end
 
-  defp format_eex(code, opts) do
-    indentation = Keyword.get(opts, :indentation, 0)
+  defp format_eex(code, state) do
+    indentation = state.indentation
 
     code = String.replace(code, ["<%= ", " %>"], "")
 
