@@ -34,7 +34,6 @@ defmodule HeexFormatter.Phases.Format do
       html: "",
       previous_token: nil,
       indentation: 0,
-      mode: :html,
       line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length
     }
 
@@ -83,18 +82,16 @@ defmodule HeexFormatter.Phases.Format do
         end
       end
 
-    state =
-      cond do
-        !self_closed? and tag == "script" -> %{state | mode: :script}
-        self_closed? -> state
-        true -> %{state | indentation: state.indentation + 1}
-      end
+    indentation = if self_closed?, do: state.indentation, else: state.indentation + 1
 
-    %{state | html: state.html <> "\n" <> tag_opened}
+    %{state | html: state.html <> "\n" <> tag_opened, indentation: indentation}
   end
 
-  defp token_to_string({:text, text, _meta}, %{mode: :script} = state) do
-    %{state | html: state.html <> text}
+  defp token_to_string(
+         {:text, text, _meta},
+         %{previous_token: {:tag_open, "script", _, _}} = state
+       ) do
+    %{state | html: state.html <> String.trim_trailing(text)}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
@@ -108,23 +105,11 @@ defmodule HeexFormatter.Phases.Format do
     end
   end
 
-  defp token_to_string({:tag_close, "script" = tag, _meta}, state) do
-    indent = indent_expression(state.indentation)
-    tag_closed = "#{indent}</#{tag}>"
-
-    %{state | html: state.html <> tag_closed, mode: :html}
-  end
-
   defp token_to_string({:tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
     tag_closed = indent_expression("</#{tag}>", indentation)
 
     %{state | html: state.html <> tag_closed, indentation: indentation}
-  end
-
-  # eex_tag_render represents <%=
-  defp token_to_string({:eex_tag_render, tag, _meta}, %{mode: :script} = state) do
-    %{state | html: state.html <> String.trim(tag)}
   end
 
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
