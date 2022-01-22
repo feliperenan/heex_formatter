@@ -22,8 +22,6 @@ defmodule HeexFormatter.Phases.Format do
   step before writting it to a file.
   """
 
-  alias HeexFormatter.Core.EexFormatter
-
   # Use 2 spaces for a tab
   @tab "  "
 
@@ -109,7 +107,7 @@ defmodule HeexFormatter.Phases.Format do
 
   # eex_tag_render represents <%=
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
-    formatted_tag = EexFormatter.format(tag, indentation: state.indentation)
+    formatted_tag = format_eex(tag, indentation: state.indentation)
 
     case state.previous_token do
       {:text, _text, _meta} ->
@@ -218,5 +216,62 @@ defmodule HeexFormatter.Phases.Format do
       {attr, nil} ->
         ~s(#{attr})
     end
+  end
+
+  defp format_eex(code, opts) do
+    indentation = Keyword.get(opts, :indentation, 0)
+
+    code = String.replace(code, ["<%= ", " %>"], "")
+
+    formatted_code =
+      cond do
+        code =~ ~r/\sdo\z/m -> format_ends_with_do(code, [])
+        String.ends_with?(code, "->") -> format_ends_with_priv_fn(code, [])
+        true -> run_formatter(code, [])
+      end
+
+    formatted_code =
+      Enum.join(
+        String.split(formatted_code, "\n"),
+        "\n" <> String.duplicate(@tab, indentation)
+      )
+
+    "<%= #{formatted_code} %>"
+  end
+
+  defp format_ends_with_do(code, formatter_opts) do
+    (code <> "\nend")
+    |> run_formatter(formatter_opts)
+    |> String.replace_trailing("\nend", "")
+  end
+
+  defp format_ends_with_priv_fn(code, formatter_opts) do
+    (code <> "\nnil\nend")
+    |> run_formatter(formatter_opts)
+    |> String.trim()
+    |> remove_added_code()
+    |> String.split("\n")
+    |> Enum.slice(0..-3)
+    |> Enum.join("\n")
+  end
+
+  defp remove_added_code(code) do
+    if String.ends_with?(code, ")") do
+      fn_name_length = String.split(code, "(") |> Enum.at(0) |> String.length()
+      extra_space = String.duplicate(" ", fn_name_length + 1)
+
+      code
+      |> String.replace("(\n ", "", global: false)
+      |> String.replace("\n  ", "\n" <> extra_space)
+      |> String.replace_trailing("\n)", "")
+    else
+      code
+    end
+  end
+
+  defp run_formatter(code, opts) do
+    code
+    |> Code.format_string!(opts)
+    |> IO.iodata_to_binary()
   end
 end
