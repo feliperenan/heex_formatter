@@ -19,7 +19,7 @@ defmodule HeexFormatter.Phases.Format do
   "<section>\n  <div>\n    <h1>\n      Hello\n    </h1>\n  </div>\n</section>\n"
 
   Notice that this string is formatted. So this is supposed to be the last
-  step before writting it to a file.
+  step before writing it to a file.
   """
 
   # Use 2 spaces for a tab
@@ -41,7 +41,7 @@ defmodule HeexFormatter.Phases.Format do
         %{new_state | previous_token: token}
       end)
 
-    # That is because we are adding "\n" everytime a tag is open. Then we need to extract
+    # That is because we are adding "\n" every time a tag is open. Then we need to extract
     # "\n" from the first line and put this in the end of the line.
     "\n" <> html = result.html
     html <> "\n"

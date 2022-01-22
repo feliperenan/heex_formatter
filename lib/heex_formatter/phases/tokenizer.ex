@@ -24,8 +24,8 @@ defmodule HeexFormatter.Phases.Tokenizer do
     {:tag_close, "section", %{column: 1, line: 2}},
   ]
 
-  Notice that it adds custom identifiers to eex expresions such as `eex_tag_render` and
-  `eex_tag` as well as `block?` metadata to indentify if that is either a block or not.
+  Notice that it adds custom identifiers to eex expressions such as `eex_tag_render` and
+  `eex_tag` as well as `block?` metadata to identify if that is either a block or not.
   """
   alias Phoenix.LiveView.HTMLTokenizer
 

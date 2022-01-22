@@ -2,9 +2,9 @@
 
 [![ElixirCI](https://github.com/feliperenan/heex_formatter/actions/workflows/elixir.yml/badge.svg)](https://github.com/feliperenan/heex_formatter/actions/workflows/elixir.yml)
 
-A code formatter for Heex tamplates.
+A code formatter for Heex templates.
 
-:warning: This project is still in alpha stage. There are serveral cases yet to be handled.
+:warning: This project is still in alpha stage. There are several cases yet to be handled.
 
 ![](examples/example.gif)
 
