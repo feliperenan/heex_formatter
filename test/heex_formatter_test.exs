@@ -578,4 +578,38 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle case statement" do
+    input = """
+    <tr>
+      <%= for value <- @values do %>
+        <td class="border-2">
+          <%= case value.type do %>
+          <% :text -> %>
+          Do something
+          <% _ -> %>
+            Do something else
+          <% end %>
+        </td>
+      <% end %>
+    </tr>
+    """
+
+    expected = """
+    <tr>
+      <%= for value <- @values do %>
+        <td class="border-2">
+          <%= case value.type do %>
+          <% :text -> %>
+            Do something
+          <% _ -> %>
+            Do something else
+          <% end %>
+        </td>
+      <% end %>
+    </tr>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end

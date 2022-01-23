@@ -175,10 +175,17 @@ defmodule HeexFormatter.Phases.Format do
     %{state | html: state.html <> eex_tag, indentation: indentation}
   end
 
+  # Handle eex_tag such as <% {:ok, result} -> %> present within case statements
+  # or cond.
+  defp token_to_string({:eex_tag, tag, %{block?: true}}, state) do
+    eex_tag = indent_expression(tag, state.indentation - 1)
+    %{state | html: state.html <> eex_tag}
+  end
+
   defp token_to_string({:eex_tag, tag, _meta}, state) do
     case state.previous_token do
       {type, _tag, _meta} when type in [:eex_tag_render, :eex_tag] ->
-        eex_tag = indent_expression(tag, state.indentation - 1)
+        eex_tag = indent_expression(tag, state.indentation)
 
         %{state | html: state.html <> eex_tag}
 
