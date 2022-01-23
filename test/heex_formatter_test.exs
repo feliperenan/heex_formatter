@@ -342,7 +342,7 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  test "handle preformatted tags tag but doesn't touch JS code" do
+  test "handle script tags but don't touch JS code" do
     input = """
     <div>
     <script>
@@ -359,20 +359,6 @@ defmodule HeexFormatterTest do
       return false;
     };
     </script>
-    <style>
-    h1 {
-      font-weight: 900;
-    }
-    </style>
-    <pre>
-    break
-       break
-    </pre>
-    <code>
-    public static void main(String[] args) {
-      System.out.println("Moin")
-    }
-    </code>
     </div>
     """
 
@@ -392,15 +378,71 @@ defmodule HeexFormatterTest do
       return false;
     };
       </script>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle style tags but don't touch CSS code" do
+    input = """
+    <div>
+    <style>
+    h1 {
+      font-weight: 900;
+    }
+    </style>
+    </div>
+    """
+
+    expected = """
+    <div>
       <style>
     h1 {
       font-weight: 900;
     }
       </style>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle pre tags but don't touch the preformatted contents" do
+    input = """
+    <div>
+    <pre>
+    break
+       break
+    </pre>
+    </div>
+    """
+
+    expected = """
+    <div>
       <pre>
     break
        break
       </pre>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle code tags but don't touch the code inside" do
+    input = """
+    <div>
+    <code>
+    public static void main(String[] args) {
+      System.out.println("Moin")
+    }
+    </code>
+    </div>
+    """
+
+    expected = """
+    <div>
       <code>
     public static void main(String[] args) {
       System.out.println("Moin")
