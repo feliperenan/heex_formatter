@@ -524,4 +524,32 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "does not break lines when tag doesn't contain content" do
+    input = """
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Age</th>
+
+        <th></th>
+        <th>
+        </th>
+      </tr>
+    </thead>
+    """
+
+    expected = """
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Age</th>
+        <th></th>
+        <th></th>
+      </tr>
+    </thead>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end

@@ -122,19 +122,25 @@ defmodule HeexFormatter.Phases.Format do
   defp token_to_string({:tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
 
-    case state.previous_token do
-      {:text, _text, _meta} ->
-        if tag_contains_line_break?(state.html, tag) do
-          tag_closed = indent_expression("</#{tag}>", indentation)
-          %{state | html: state.html <> tag_closed, indentation: indentation}
-        else
-          %{state | html: state.html <> "</#{tag}>", indentation: indentation}
-        end
+    tag_closed =
+      case state.previous_token do
+        {:text, _text, _meta} ->
+          if tag_contains_line_break?(state.html, tag) do
+            indent_expression("</#{tag}>", indentation)
+          else
+            "</#{tag}>"
+          end
 
-      _token ->
-        tag_closed = indent_expression("</#{tag}>", indentation)
-        %{state | html: state.html <> tag_closed, indentation: indentation}
-    end
+        # In case the previous token is a tag_open and it is the same tag, we
+        # don't want to break lines since this tag has not content at all.
+        {:tag_open, ^tag, _attrs, _meta} ->
+          "</#{tag}>"
+
+        _token ->
+          indent_expression("</#{tag}>", indentation)
+      end
+
+    %{state | html: state.html <> tag_closed, indentation: indentation}
   end
 
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
