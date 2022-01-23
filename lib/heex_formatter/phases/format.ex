@@ -36,7 +36,8 @@ defmodule HeexFormatter.Phases.Format do
       html: "",
       previous_token: nil,
       indentation: 0,
-      line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length
+      line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length,
+      formatter_opts: opts
     }
 
     result =
@@ -266,21 +267,24 @@ defmodule HeexFormatter.Phases.Format do
   #            [class: \"w-full\", phx_change: \"on_change\"],
   #            fn f -> %>
   defp format_eex(code, state) do
-    indentation = state.indentation
-
     code = String.replace(code, ["<%= ", " %>"], "")
 
     formatted_code =
       cond do
-        code =~ ~r/\sdo\z/m -> format_ends_with_do(code, [])
-        String.ends_with?(code, "->") -> format_ends_with_priv_fn(code, [])
-        true -> run_formatter(code, [])
+        code =~ ~r/\sdo\z/m ->
+          format_ends_with_do(code, state.formatter_opts)
+
+        String.ends_with?(code, "->") ->
+          format_ends_with_priv_fn(code, state.formatter_opts)
+
+        true ->
+          run_formatter(code, state.formatter_opts)
       end
 
     formatted_code =
       Enum.join(
         String.split(formatted_code, "\n"),
-        "\n" <> String.duplicate(@tab, indentation)
+        "\n" <> String.duplicate(@tab, state.indentation)
       )
 
     "<%= #{formatted_code} %>"

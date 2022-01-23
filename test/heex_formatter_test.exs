@@ -497,7 +497,19 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  test "doesn't break lines when tag doesn't have any attrs and it fits" do
+  test "does not add parentheses when tag is configured to not to" do
+    input = """
+    <%= text_input f, :name %>
+    """
+
+    expected = """
+    <%= text_input f, :name %>
+    """
+
+    assert_formatter_output(input, expected, locals_without_parens: [text_input: 2])
+  end
+
+  test "use the configured line_length for breaking texts into new lines" do
     input = """
       <p>My title</p>
     """
