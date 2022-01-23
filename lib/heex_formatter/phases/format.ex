@@ -104,7 +104,7 @@ defmodule HeexFormatter.Phases.Format do
         {:tag_open, _tag, attrs, _meta} ->
           text = String.trim(text)
 
-          if String.length(text) < @default_line_length and Enum.empty?(attrs) do
+          if String.length(text) < state.line_length and Enum.empty?(attrs) do
             text
           else
             indent = indent_expression(state.indentation)

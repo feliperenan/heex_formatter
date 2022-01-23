@@ -499,6 +499,20 @@ defmodule HeexFormatterTest do
 
   test "doesn't break lines when tag doesn't have any attrs and it fits" do
     input = """
+      <p>My title</p>
+    """
+
+    expected = """
+    <p>
+      My title
+    </p>
+    """
+
+    assert_formatter_output(input, expected, line_length: 5)
+  end
+
+  test "doesn't break lines when tag doesn't have any attrs and it fits using the configured line length" do
+    input = """
       <p>
       My title
       </p>
