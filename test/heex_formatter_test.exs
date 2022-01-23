@@ -342,22 +342,20 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  test "handle script tag but doesn't touch JS code" do
+  test "handle script tags but don't touch JS code" do
     input = """
     <div>
     <script>
     function my_confirm(event) {
       if (!confirm(' <%= "confirmation text" %> ')) {
-        event.stopPropagation()
-      }
+      event.stopPropagation()
+    }
       return false;
     };
     </script>
     <script>
     function my_confirm(event) {
-      if (!confirm('foo')) {
-        event.stopPropagation()
-      }
+      if (!confirm('foo')) { event.stopPropagation() }
       return false;
     };
     </script>
@@ -369,19 +367,87 @@ defmodule HeexFormatterTest do
       <script>
     function my_confirm(event) {
       if (!confirm(' <%= "confirmation text" %> ')) {
-        event.stopPropagation()
-      }
+      event.stopPropagation()
+    }
       return false;
     };
       </script>
       <script>
     function my_confirm(event) {
-      if (!confirm('foo')) {
-        event.stopPropagation()
-      }
+      if (!confirm('foo')) { event.stopPropagation() }
       return false;
     };
       </script>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle style tags but don't touch CSS code" do
+    input = """
+    <div>
+    <style>
+    h1 {
+      font-weight: 900;
+    }
+    </style>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <style>
+    h1 {
+      font-weight: 900;
+    }
+      </style>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle pre tags but don't touch the preformatted contents" do
+    input = """
+    <div>
+    <pre>
+    break
+       break
+    </pre>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <pre>
+    break
+       break
+      </pre>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle code tags but don't touch the code inside" do
+    input = """
+    <div>
+    <code>
+    public static void main(String[] args) {
+      System.out.println("Moin")
+    }
+    </code>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <code>
+    public static void main(String[] args) {
+      System.out.println("Moin")
+    }
+      </code>
     </div>
     """
 
