@@ -21,7 +21,7 @@ defmodule HeexFormatter.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:phoenix_live_view, "~> 0.17.5"},
+      {:phoenix_live_view, path: "~/source/phoenix_live_view"},
       {:jason, "~> 1.3"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]

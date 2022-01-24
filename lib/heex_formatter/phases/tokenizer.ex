@@ -1,5 +1,9 @@
 defmodule HeexFormatter.Phases.Tokenizer do
-  @moduledoc """
+  @moduledoc false
+
+  alias Phoenix.LiveView.HTMLTokenizer
+
+  @doc """
   Tokenize contents using EEx.Tokenizer and Phoenix.Live.HTMLTokenizer respectively.
 
   Given the following contents:
@@ -27,41 +31,59 @@ defmodule HeexFormatter.Phases.Tokenizer do
   Notice that it adds custom identifiers to eex expressions such as `eex_tag_render` and
   `eex_tag` as well as `block?` metadata to identify if that is either a block or not.
   """
-  alias Phoenix.LiveView.HTMLTokenizer
-
-  @spec run(String.t(), Keyword.t()) :: list()
-  def run(contents, _opts) do
+  def tokenize(contents) do
     {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 0, 0, %{indentation: 0, trim: false})
-    {tokens, _acc} = Enum.flat_map_reduce(eex_nodes, [], &tokenize/2)
-    tokens
+    {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
+    HTMLTokenizer.finalize(tokens, "nofile", cont)
   end
 
-  defp tokenize({:text, _line, _column, text}, acc) do
-    string = List.to_string(text)
-    {tokens, _} = HTMLTokenizer.tokenize(string, "nofile", 0, [], [], :text)
-    {tokens |> Enum.reject(&line_break?/1) |> Enum.reverse(), acc}
+  defp do_tokenize({:text, _line, _column, text}, {tokens, cont}) do
+    {tokens, cont} =
+      text
+      |> List.to_string()
+      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
+
+    {Enum.reject(tokens, &line_break?/1), cont}
   end
 
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
 
-  defp tokenize({type, line, column, opt, expr}, acc) when type in @eex_expr do
+  defp do_tokenize({type, _, _, opt, expr}, {tokens, :script = cont})
+       when type in @eex_expr do
+    [{:text, text, meta} | rest] = tokens
+
+    text = IO.iodata_to_binary([text, '<%', opt, expr, '%>'])
+
+    {[{:text, text, meta} | rest], cont}
+  end
+
+  defp do_tokenize({type, _, _, opt, expr}, {tokens, {:comment, _, _} = cont})
+       when type in @eex_expr do
+    [{:text, text, meta} | rest] = tokens
+
+    text = IO.iodata_to_binary([text, '<%', opt, expr, '%>'])
+
+    {[{:text, text, meta} | rest], cont}
+  end
+
+  defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
     render = List.to_string(opt)
     expr = expr |> List.to_string() |> String.trim()
     block? = String.ends_with?(expr, "do") || String.ends_with?(expr, "->")
     meta = %{column: column, line: line, block?: block?}
 
-    {type, tag} =
+    token =
       if render == "=" do
-        {:eex_tag_render, "<%= #{expr} %>"}
+        {:eex_tag_render, "<%= #{expr} %>", meta}
       else
-        {:eex_tag, "<% #{expr} %>"}
+        {:eex_tag, "<% #{expr} %>", meta}
       end
 
-    {[{type, tag, meta}], acc}
+    {[token | tokens], cont}
   end
 
-  defp tokenize(_node, acc) do
-    {[], acc}
+  defp do_tokenize(_node, acc) do
+    acc
   end
 
   defp line_break?({:text, text, _meta}) do

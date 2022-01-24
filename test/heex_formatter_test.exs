@@ -612,4 +612,38 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle HTML comments but doens't format its multines" do
+    input = """
+    <!-- Inline comment -->
+    <section>
+      <!-- commenting out this div
+      <div>
+        <p><%= @user.name %></p>
+        <p
+          class="my-class">
+          text
+        </p>
+      </div>
+      -->
+    </section>
+    """
+
+    expected = """
+    <!-- Inline comment -->
+    <section>
+      <!-- commenting out this div
+      <div>
+        <p><%= @user.name %></p>
+        <p
+          class="my-class">
+          text
+        </p>
+      </div>
+      -->
+    </section>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end

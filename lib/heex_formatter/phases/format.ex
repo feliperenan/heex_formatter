@@ -25,8 +25,6 @@ defmodule HeexFormatter.Phases.Format do
   # Use 2 spaces for a tab
   @tab "  "
 
-  @preformatted_tags ~w(script code style pre)
-
   # Line length of opening tags before splitting attributes onto their own line
   @default_line_length 98
 
@@ -37,7 +35,8 @@ defmodule HeexFormatter.Phases.Format do
       previous_token: nil,
       indentation: 0,
       line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length,
-      formatter_opts: opts
+      formatter_opts: opts,
+      mode: :normal
     }
 
     result =
@@ -51,8 +50,7 @@ defmodule HeexFormatter.Phases.Format do
 
     # That is because we are adding "\n" every time a tag is open. Then we need to extract
     # "\n" from the first line and put this in the end of the line.
-    "\n" <> html = result.html
-    html <> "\n"
+    String.trim_leading(result.html) <> "\n"
   end
 
   defp token_to_string({:tag_open, tag, attrs, meta} = node, state) do
@@ -85,9 +83,20 @@ defmodule HeexFormatter.Phases.Format do
         end
       end
 
+    mode = if tag in ~w(script tag style code pre), do: String.to_atom(tag), else: :normal
     indentation = if self_closed?, do: state.indentation, else: state.indentation + 1
 
-    %{state | html: state.html <> "\n" <> tag_opened, indentation: indentation}
+    %{state | html: state.html <> "\n" <> tag_opened, indentation: indentation, mode: mode}
+  end
+
+  defp token_to_string({:text, text, _meta}, %{mode: mode} = state)
+       when mode in ~w(script tag style code pre)a do
+    %{state | html: state.html <> String.trim_trailing(text)}
+  end
+
+  defp token_to_string({:text, text, %{context: context}}, state)
+       when context in [:comment_start, :comment_end] do
+    %{state | html: state.html <> String.trim_trailing(text)}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
@@ -95,9 +104,6 @@ defmodule HeexFormatter.Phases.Format do
       case state.previous_token do
         {:eex_tag_render, _tag, _meta} ->
           " " <> String.trim(text)
-
-        {:tag_open, tag, _, _} when tag in @preformatted_tags ->
-          String.trim_trailing(text)
 
         # In case the previous token is a tag open, this will check if the text
         # should either go to the current line or next line. Tag with attributes
@@ -141,7 +147,9 @@ defmodule HeexFormatter.Phases.Format do
           indent_expression("</#{tag}>", indentation)
       end
 
-    %{state | html: state.html <> tag_closed, indentation: indentation}
+    mode = if tag in ~w(script tag style code pre), do: String.to_atom(tag), else: :normal
+
+    %{state | html: state.html <> tag_closed, indentation: indentation, mode: mode}
   end
 
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
