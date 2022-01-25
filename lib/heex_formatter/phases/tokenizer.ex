@@ -48,24 +48,6 @@ defmodule HeexFormatter.Phases.Tokenizer do
 
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
 
-  defp do_tokenize({type, _, _, opt, expr}, {tokens, :script = cont})
-       when type in @eex_expr do
-    [{:text, text, meta} | rest] = tokens
-
-    text = IO.iodata_to_binary([text, '<%', opt, expr, '%>'])
-
-    {[{:text, text, meta} | rest], cont}
-  end
-
-  defp do_tokenize({type, _, _, opt, expr}, {tokens, {:comment, _, _} = cont})
-       when type in @eex_expr do
-    [{:text, text, meta} | rest] = tokens
-
-    text = IO.iodata_to_binary([text, '<%', opt, expr, '%>'])
-
-    {[{:text, text, meta} | rest], cont}
-  end
-
   defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
     render = List.to_string(opt)
     expr = expr |> List.to_string() |> String.trim()

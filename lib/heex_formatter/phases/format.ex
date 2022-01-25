@@ -89,14 +89,17 @@ defmodule HeexFormatter.Phases.Format do
     %{state | html: state.html <> "\n" <> tag_opened, indentation: indentation, mode: mode}
   end
 
-  defp token_to_string({:text, text, _meta}, %{mode: mode} = state)
-       when mode in ~w(script tag style code pre)a do
-    %{state | html: state.html <> String.trim_trailing(text)}
+  defp token_to_string({tag, text, _meta}, %{mode: mode} = state)
+       when tag in ~w(text eex_tag eex_tag_render)a and mode in ~w(script style code pre comment)a do
+    %{state | html: state.html <> text}
   end
 
-  defp token_to_string({:text, text, %{context: context}}, state)
-       when context in [:comment_start, :comment_end] do
-    %{state | html: state.html <> String.trim_trailing(text)}
+  defp token_to_string({:text, text, %{context: :comment_start}}, state) do
+    %{state | html: state.html <> String.trim_trailing(text), mode: :comment}
+  end
+
+  defp token_to_string({:text, text, %{context: :comment_end}}, state) do
+    %{state | html: state.html <> String.trim_trailing(text), mode: :normal}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
@@ -126,6 +129,13 @@ defmodule HeexFormatter.Phases.Format do
     %{state | html: state.html <> text}
   end
 
+  defp token_to_string({:tag_close, tag, _meta}, %{mode: mode} = state)
+       when mode != :normal do
+    indentation = state.indentation - 1
+    tag_closed = "#{indent_expression(indentation)}</#{tag}>"
+    %{state | html: state.html <> tag_closed, indentation: indentation, mode: :normal}
+  end
+
   defp token_to_string({:tag_close, tag, _meta}, state) do
     indentation = state.indentation - 1
 
@@ -147,7 +157,7 @@ defmodule HeexFormatter.Phases.Format do
           indent_expression("</#{tag}>", indentation)
       end
 
-    mode = if tag in ~w(script tag style code pre), do: String.to_atom(tag), else: :normal
+    mode = if tag in ~w(script style code pre), do: String.to_atom(tag), else: :normal
 
     %{state | html: state.html <> tag_closed, indentation: indentation, mode: mode}
   end
