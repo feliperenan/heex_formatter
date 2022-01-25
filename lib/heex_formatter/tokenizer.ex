@@ -1,4 +1,4 @@
-defmodule HeexFormatter.Phases.Tokenizer do
+defmodule HeexFormatter.Tokenizer do
   @moduledoc false
 
   alias Phoenix.LiveView.HTMLTokenizer

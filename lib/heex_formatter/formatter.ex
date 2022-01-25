@@ -1,5 +1,14 @@
-defmodule HeexFormatter.Phases.Format do
-  @moduledoc """
+defmodule HeexFormatter.Formatter do
+  @moduledoc false
+
+  # Use 2 spaces for a tab
+  @tab "  "
+
+  # Line length of opening tags before splitting attributes onto their own line
+  @default_line_length 98
+
+
+  @doc """
   Transform the given tokens into a string formatting it.
 
   Given the following nodes:
@@ -21,15 +30,7 @@ defmodule HeexFormatter.Phases.Format do
   Notice that this string is formatted. So this is supposed to be the last
   step before writing it to a file.
   """
-
-  # Use 2 spaces for a tab
-  @tab "  "
-
-  # Line length of opening tags before splitting attributes onto their own line
-  @default_line_length 98
-
-  @spec run(list(), Keyword.t()) :: String.t()
-  def run(tokens, opts) do
+  def format(tokens, opts) do
     initial_state = %{
       html: "",
       previous_token: nil,
