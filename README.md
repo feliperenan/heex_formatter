@@ -45,8 +45,7 @@ Set `heex_line_length` to only set the line:lenght for the heex formatter.
 
 ```elixir
 [
-  plugins: [HeexFormatter],
-  inputs: ["{config,lib,test}/**/*.{ex,exs}"],
+  # ...omitted
   heex_line_length: 300
 ]
 ```
