@@ -336,7 +336,7 @@ defmodule HeexFormatterTest do
     <div>
     <script>
     function my_confirm(event) {
-      if (!confirm(' <%= "confirmation text" %> ')) {
+      if (!confirm('<%= "confirmation text" %>')) {
       event.stopPropagation()
     }
       return false;
@@ -355,7 +355,7 @@ defmodule HeexFormatterTest do
     <div>
       <script>
     function my_confirm(event) {
-      if (!confirm(' <%= "confirmation text" %> ')) {
+      if (!confirm('<%= "confirmation text" %>')) {
       event.stopPropagation()
     }
       return false;
