@@ -654,7 +654,7 @@ defmodule HeexFormatterTest do
           text
         </p>
       </div>
-      -->
+         -->
     </section>
     """
 
@@ -669,8 +669,28 @@ defmodule HeexFormatterTest do
           text
         </p>
       </div>
-      -->
+         -->
     </section>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle multiple comments in a row" do
+    input = """
+    <div><p>Hello</p></div>
+          <!-- <%= 1 %> --><!-- <%= 2 %> -->
+          <div><p>Hello</p></div>
+    """
+
+    expected = """
+    <div>
+      <p>Hello</p>
+    </div>
+          <!-- <%= 1 %> --><!-- <%= 2 %> -->
+    <div>
+      <p>Hello</p>
+    </div>
     """
 
     assert_formatter_output(input, expected)

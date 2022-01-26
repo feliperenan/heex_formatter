@@ -42,8 +42,9 @@ defmodule HeexFormatter.Formatter do
 
     tokens
     |> Enum.reduce(initial_state, fn token, state ->
-      new_state = token_to_string(token, state)
-      %{new_state | previous_token: token}
+      token
+      |> token_to_string(state)
+      |> Map.put(:previous_token, token)
     end)
     |> buffer_to_string()
   end
@@ -85,23 +86,31 @@ defmodule HeexFormatter.Formatter do
         end
       end
 
-    mode = if tag in ~w(script style code pre), do: String.to_existing_atom(tag), else: :normal
     indentation = if self_closed?, do: state.indentation, else: state.indentation + 1
     line_break = may_add_line_break(:tag_open, state.previous_token)
     buffer = [line_break <> tag_opened | state.buffer]
 
-    %{state | buffer: buffer, indentation: indentation, mode: mode}
-  end
-
-  defp token_to_string({tag, text, _meta}, %{mode: mode} = state)
-       when tag in ~w(text eex_tag eex_tag_render)a and mode in ~w(script style code pre comment)a do
-    %{state | buffer: [text | state.buffer]}
+    %{state | buffer: buffer, indentation: indentation, mode: mode(tag)}
   end
 
   defp token_to_string({:text, text, %{context: context}}, state) when is_list(context) do
     mode = if :comment_start in context, do: :comment, else: :normal
 
+    text =
+      if String.contains?(text, "-->\n") do
+        String.trim_trailing(text) <> "\n"
+      else
+        text
+      end
+
     %{state | buffer: [text | state.buffer], mode: mode}
+  end
+
+  # Handle text, eex_tag and eex_tag_render when mode is one of the `@special_modes`.
+  # Here we don't want to format anything but just return the text as it is.
+  defp token_to_string({tag, text, _meta}, %{mode: mode} = state)
+       when tag in ~w(text eex_tag eex_tag_render)a and mode in @special_modes do
+    %{state | buffer: [text | state.buffer]}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
@@ -145,6 +154,11 @@ defmodule HeexFormatter.Formatter do
 
     tag_closed =
       case state.previous_token do
+        # Do not add a line break when the previous tag is a comment. In case
+        # the metadata contains context, it is a comment.
+        {:text, _text, %{context: context}} when is_list(context) ->
+          "</#{tag}>"
+
         {:text, _text, _meta} ->
           if tag_open_with_line_break?(state.buffer, tag) do
             indent_expression("</#{tag}>", indentation)
@@ -161,9 +175,7 @@ defmodule HeexFormatter.Formatter do
           indent_expression("</#{tag}>", indentation)
       end
 
-    mode = if tag in ~w(script style code pre), do: String.to_atom(tag), else: :normal
-
-    %{state | buffer: [tag_closed | state.buffer], indentation: indentation, mode: mode}
+    %{state | buffer: [tag_closed | state.buffer], indentation: indentation, mode: mode(tag)}
   end
 
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
@@ -389,7 +401,7 @@ defmodule HeexFormatter.Formatter do
 
   # Returns an empty space or a "\n".
   #
-  # * For tag_open, the genernal rule is that is should break line. The exception
+  # * For tag_open, the general rule is that it should break line. The exception
   #   is when there is no previous_token or the previous_token is a HTML comment.
   defp may_add_line_break(:tag_open, nil), do: ""
 
@@ -403,4 +415,9 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp may_add_line_break(:tag_open, _token), do: "\n"
+
+  # Returns `script`, `style`, `code` or `pre` when the given tag is one of these
+  # tags. Otherwise, it returns `normal`.
+  defp mode(tag) when tag in ~w(script style code pre), do: String.to_existing_atom(tag)
+  defp mode(_tag), do: :normal
 end
