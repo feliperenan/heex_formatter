@@ -122,7 +122,7 @@ defmodule HeexFormatter.Formatter do
   # Here we don't want to format anything but just return the text as it is.
   defp token_to_string({tag, text, _meta}, %{mode: mode} = state)
        when tag in ~w(text eex_tag eex_tag_render)a and mode in @special_modes do
-    %{state | buffer: [text | state.buffer]}
+    %{state | buffer: [String.trim_trailing(text) | state.buffer]}
   end
 
   defp token_to_string({:text, text, _meta}, state) do
@@ -141,7 +141,7 @@ defmodule HeexFormatter.Formatter do
   defp token_to_string({:tag_close, tag, _meta}, %{mode: mode} = state)
        when mode in @special_modes do
     indentation = state.indentation - 1
-    tag_closed = "#{indent_expression(indentation)}</#{tag}>"
+    tag_closed = indent_expression("</#{tag}>", indentation)
     %{state | buffer: [tag_closed | state.buffer], indentation: indentation, mode: :normal}
   end
 
