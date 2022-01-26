@@ -7,6 +7,10 @@ defmodule HeexFormatter.Formatter do
   # Line length of opening tags before splitting attributes onto their own line
   @default_line_length 98
 
+  # The formatter will ignore contents within this tag. Therefore, it will not
+  # be formatted.
+  @special_modes ~w(script style code pre comment)a
+
   @doc """
   Transform the given tokens into a string formatting it.
 
@@ -25,9 +29,6 @@ defmodule HeexFormatter.Formatter do
   The following string will be returned:
 
   "<section>\n  <div>\n    <h1>\n      Hello\n    </h1>\n  </div>\n</section>\n"
-
-  Notice that this string is formatted. So this is supposed to be the last
-  step before writing it to a file.
   """
   def format(tokens, opts) do
     initial_state = %{
@@ -130,8 +131,10 @@ defmodule HeexFormatter.Formatter do
     %{state | buffer: [text | state.buffer]}
   end
 
+  # Handle tag_close when mode is one of the special modes. Here, we want to
+  # close the tag in the next line with the current indentation - 1.
   defp token_to_string({:tag_close, tag, _meta}, %{mode: mode} = state)
-       when mode != :normal do
+       when mode in @special_modes do
     indentation = state.indentation - 1
     tag_closed = "#{indent_expression(indentation)}</#{tag}>"
     %{state | buffer: [tag_closed | state.buffer], indentation: indentation, mode: :normal}
@@ -143,7 +146,7 @@ defmodule HeexFormatter.Formatter do
     tag_closed =
       case state.previous_token do
         {:text, _text, _meta} ->
-          if tag_contains_line_break?(state.buffer, tag) do
+          if tag_open_with_line_break?(state.buffer, tag) do
             indent_expression("</#{tag}>", indentation)
           else
             "</#{tag}>"
@@ -167,12 +170,12 @@ defmodule HeexFormatter.Formatter do
     formatted_tag = format_eex(tag, state)
 
     case state.previous_token do
+      nil ->
+        %{state | buffer: [formatted_tag | state.buffer]}
+
       {:text, _text, _meta} ->
         eex_tag = " " <> formatted_tag
         %{state | buffer: [eex_tag | state.buffer]}
-
-      nil ->
-        %{state | buffer: [formatted_tag | state.buffer]}
 
       _token ->
         indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
@@ -206,13 +209,13 @@ defmodule HeexFormatter.Formatter do
 
   defp token_to_string({:eex_tag, tag, _meta}, state) do
     case state.previous_token do
+      nil ->
+        %{state | buffer: [tag | state.buffer]}
+
       {type, _tag, _meta} when type in [:eex_tag_render, :eex_tag] ->
         eex_tag = indent_expression(tag, state.indentation)
 
         %{state | buffer: [eex_tag | state.buffer]}
-
-      nil ->
-        %{state | buffer: [tag | state.buffer]}
 
       _token ->
         indentation = state.indentation - 1
@@ -368,21 +371,21 @@ defmodule HeexFormatter.Formatter do
   #
   #   should close the tag in the next line.
   #   <p class="some-class">  \nShould break line
-  defp tag_contains_line_break?(buffer, tag) do
-    current_tag = current_tag(buffer, [], tag)
-
-    String.contains?(current_tag, "\n")
+  defp tag_open_with_line_break?(buffer, tag) do
+    buffer
+    |> current_tag_open([], tag)
+    |> String.contains?("\n")
   end
 
-  defp current_tag([head | rest], buffer, tag) do
+  defp current_tag_open([head | rest], buffer, tag) do
     if String.contains?(head, "<#{tag}>") do
-      current_tag([], buffer, tag)
+      current_tag_open([], buffer, tag)
     else
-      current_tag(rest, [head | buffer], tag)
+      current_tag_open(rest, [head | buffer], tag)
     end
   end
 
-  defp current_tag([], buffer, _tag), do: IO.iodata_to_binary(buffer)
+  defp current_tag_open([], buffer, _tag), do: IO.iodata_to_binary(buffer)
 
   # Returns an empty space or a "\n".
   #
