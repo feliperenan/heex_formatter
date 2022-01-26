@@ -38,12 +38,9 @@ defmodule HeexFormatter.Tokenizer do
   end
 
   defp do_tokenize({:text, _line, _column, text}, {tokens, cont}) do
-    {tokens, cont} =
-      text
-      |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
-
-    {Enum.reject(tokens, &line_break?/1), cont}
+    text
+    |> List.to_string()
+    |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
   end
 
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
@@ -67,10 +64,4 @@ defmodule HeexFormatter.Tokenizer do
   defp do_tokenize(_node, acc) do
     acc
   end
-
-  defp line_break?({:text, text, _meta}) do
-    String.trim(text) == ""
-  end
-
-  defp line_break?(_node), do: false
 end
