@@ -44,10 +44,22 @@ defmodule HeexFormatter.Formatter do
     |> Enum.reduce(initial_state, fn token, state ->
       token
       |> token_to_string(state)
-      |> Map.put(:previous_token, token)
+      |> put_previous_token(token)
     end)
     |> buffer_to_string()
   end
+
+  # Unless it is a line break or empty line, we want put the previous token
+  # so we can compare with the current one.
+  defp put_previous_token(state, {:text, text, _met} = token) do
+    if line_break_or_empty_space?(text) do
+      state
+    else
+      %{state | previous_token: token}
+    end
+  end
+
+  defp put_previous_token(state, token), do: %{state | previous_token: token}
 
   defp buffer_to_string(state) do
     state.buffer
@@ -115,26 +127,10 @@ defmodule HeexFormatter.Formatter do
 
   defp token_to_string({:text, text, _meta}, state) do
     text =
-      case state.previous_token do
-        {:eex_tag_render, _tag, _meta} ->
-          " " <> String.trim(text)
-
-        # In case the previous token is a tag open, this will check if the text
-        # should either go to the current line or next line. Tag with attributes
-        # always go to the next line.
-        {:tag_open, _tag, attrs, _meta} ->
-          text = String.trim(text)
-
-          if String.length(text) < state.line_length and Enum.empty?(attrs) do
-            text
-          else
-            indent = indent_expression(state.indentation)
-            "\n" <> indent <> text
-          end
-
-        _token ->
-          indent = indent_expression(state.indentation)
-          "\n" <> indent <> String.trim(text)
+      if line_break_or_empty_space?(text) do
+        handle_line_break(text)
+      else
+        handle_text(text, state)
       end
 
     %{state | buffer: [text | state.buffer]}
@@ -420,4 +416,38 @@ defmodule HeexFormatter.Formatter do
   # tags. Otherwise, it returns `normal`.
   defp mode(tag) when tag in ~w(script style code pre), do: String.to_existing_atom(tag)
   defp mode(_tag), do: :normal
+
+  # Returns how given text formatted according to the current state.
+  defp handle_text(text, %{previous_token: {:eex_tag_render, _tag, _meta}}) do
+    " " <> String.trim(text)
+  end
+
+  # In case the previous token is a tag open, this will check if the text
+  # should either go to the current line or next line. Tag with attributes
+  # always go to the next line.
+  defp handle_text(text, %{previous_token: {:tag_open, _tag, attrs, _meta}} = state) do
+    text = String.trim(text)
+
+    if String.length(text) < state.line_length and Enum.empty?(attrs) do
+      text
+    else
+      indent = indent_expression(state.indentation)
+      "\n" <> indent <> text
+    end
+  end
+
+  defp handle_text(text, state) do
+    indent = indent_expression(state.indentation)
+    "\n" <> indent <> String.trim(text)
+  end
+
+  # Returns either a line break or empty string. In case there is more than one
+  # line break, it means that we should keep one line break.
+  defp handle_line_break(text) do
+    line_breaks_count = text |> String.graphemes() |> Enum.count(&(&1 == "\n"))
+
+    if line_breaks_count > 1, do: "\n", else: ""
+  end
+
+  defp line_break_or_empty_space?(text), do: String.trim(text) == ""
 end

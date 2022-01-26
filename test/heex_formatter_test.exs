@@ -32,23 +32,12 @@ defmodule HeexFormatterTest do
   test "remove unwanted empty lines" do
     assert_formatter_output(
       """
-
-
       <section>
-
-
-
       <div>
       <h1>    Hello</h1>
       <h2>
-
-
       Sub title
-
       </h2>
-
-
-
       </div>
       </section>
 
@@ -283,6 +272,7 @@ defmodule HeexFormatterTest do
       """,
       """
       <p>$ <%= @product.value %> in Dollars</p>
+
       <button>Submit</button>
       """
     )
@@ -321,7 +311,6 @@ defmodule HeexFormatterTest do
     <%= case {:ok, "elixir"} do %>
     <% {:ok, text} -> %>
     <%= text %>
-
     <% {:error, error} -> %>
     <%= error %>
     <% end %>
@@ -586,7 +575,6 @@ defmodule HeexFormatterTest do
       <tr>
         <th>Name</th>
         <th>Age</th>
-
         <th></th>
         <th>
         </th>
@@ -690,6 +678,44 @@ defmodule HeexFormatterTest do
           <!-- <%= 1 %> --><!-- <%= 2 %> -->
     <div>
       <p>Hello</p>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "keep single line breaks" do
+    input = """
+    <div>
+    <h2><%= @title %></h2>
+
+    <.form id="user-form" let={f} for={@changeset} phx-submit="save" >
+      <%= text_input f, :name %>
+      <%= error_tag(f, :name) %>
+
+      <%= number_input(f, :age) %>
+      <%= error_tag(f, :age) %>
+
+      <%= submit("Save", phx_disable_with: "Saving...") %>
+    </.form>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <h2>
+        <%= @title %>
+      </h2>
+
+      <.form id="user-form" let={f} for={@changeset} phx-submit="save">
+        <%= text_input(f, :name) %>
+        <%= error_tag(f, :name) %>
+
+        <%= number_input(f, :age) %>
+        <%= error_tag(f, :age) %>
+
+        <%= submit("Save", phx_disable_with: "Saving...") %>
+      </.form>
     </div>
     """
 
