@@ -509,6 +509,35 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected, locals_without_parens: [text_input: 2])
   end
 
+  test "does not add a line break in the first line" do
+    assert_formatter_output(
+      """
+      <%= @user.name %>
+      """,
+      """
+      <%= @user.name %>
+      """
+    )
+
+    assert_formatter_output(
+      """
+      <div />
+      """,
+      """
+      <div />
+      """
+    )
+
+    assert_formatter_output(
+      """
+      <% "Hello" %>
+      """,
+      """
+      <% "Hello" %>
+      """
+    )
+  end
+
   test "use the configured line_length for breaking texts into new lines" do
     input = """
       <p>My title</p>
@@ -608,6 +637,60 @@ defmodule HeexFormatterTest do
         </td>
       <% end %>
     </tr>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle HTML comments but doens't format it" do
+    input = """
+        <!-- Inline comment -->
+    <section>
+      <!-- commenting out this div
+      <div>
+        <p><%= @user.name %></p>
+        <p
+          class="my-class">
+          text
+        </p>
+      </div>
+         -->
+    </section>
+    """
+
+    expected = """
+        <!-- Inline comment -->
+    <section>
+      <!-- commenting out this div
+      <div>
+        <p><%= @user.name %></p>
+        <p
+          class="my-class">
+          text
+        </p>
+      </div>
+         -->
+    </section>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle multiple comments in a row" do
+    input = """
+    <div><p>Hello</p></div>
+          <!-- <%= 1 %> --><!-- <%= 2 %> -->
+          <div><p>Hello</p></div>
+    """
+
+    expected = """
+    <div>
+      <p>Hello</p>
+    </div>
+          <!-- <%= 1 %> --><!-- <%= 2 %> -->
+    <div>
+      <p>Hello</p>
+    </div>
     """
 
     assert_formatter_output(input, expected)

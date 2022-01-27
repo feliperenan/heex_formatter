@@ -21,7 +21,10 @@ defmodule HeexFormatter.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:phoenix_live_view, "~> 0.17.5"},
+      # Just while this PR gets merged:
+      #
+      # https://github.com/phoenixframework/phoenix_live_view/pull/1847
+      {:phoenix_live_view, github: "feliperenan/phoenix_live_view"},
       {:jason, "~> 1.3"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]

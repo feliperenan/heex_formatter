@@ -4,7 +4,7 @@ defmodule HeexFormatter do
   """
   @behaviour Mix.Tasks.Format
 
-  alias HeexFormatter.Phases
+  alias HeexFormatter.{Formatter, Tokenizer}
 
   @impl Mix.Tasks.Format
   def features(_opts) do
@@ -14,7 +14,7 @@ defmodule HeexFormatter do
   @impl Mix.Tasks.Format
   def format(contents, opts) do
     contents
-    |> Phases.Tokenizer.run(opts)
-    |> Phases.Format.run(opts)
+    |> Tokenizer.tokenize()
+    |> Formatter.format(opts)
   end
 end
