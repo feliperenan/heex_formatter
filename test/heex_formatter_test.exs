@@ -684,6 +684,20 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
+  test "put eex in the next line when it comes right after a HTML comment" do
+    input = """
+    <!-- Modal content -->
+    <%= render_slot(@inner_block) %>
+    """
+
+    expected = """
+    <!-- Modal content -->
+    <%= render_slot(@inner_block) %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
   test "keep single line breaks" do
     input = """
     <div>

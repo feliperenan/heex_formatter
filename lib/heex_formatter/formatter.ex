@@ -181,15 +181,19 @@ defmodule HeexFormatter.Formatter do
       nil ->
         %{state | buffer: [formatted_tag | state.buffer]}
 
-      {:text, _text, _meta} ->
-        eex_tag = " " <> formatted_tag
+      {:text, text, _meta} ->
+        eex_tag =
+          if html_comment?(text) do
+            indent_expression(formatted_tag, state.indentation)
+          else
+            " " <> formatted_tag
+          end
+
         %{state | buffer: [eex_tag | state.buffer]}
 
       _token ->
         indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
-
         eex_tag = indent_expression(formatted_tag, state.indentation)
-
         %{state | buffer: [eex_tag | state.buffer], indentation: indentation}
     end
   end
@@ -406,11 +410,13 @@ defmodule HeexFormatter.Formatter do
        do: ""
 
   defp may_add_line_break(:tag_open, {:text, text, _meta}) do
-    html_comment? = String.contains?(text, "<!--") and String.contains?(text, "-->")
-    if html_comment?, do: "", else: "\n"
+    if html_comment?(text), do: "", else: "\n"
   end
 
   defp may_add_line_break(:tag_open, _token), do: "\n"
+
+  defp html_comment?(text),
+    do: String.contains?(text, "<!--") and String.contains?(text, "-->")
 
   # Returns `script`, `style`, `code` or `pre` when the given tag is one of these
   # tags. Otherwise, it returns `normal`.
@@ -437,8 +443,12 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp handle_text(text, state) do
-    indent = indent_expression(state.indentation)
-    "\n" <> indent <> String.trim(text)
+    if html_comment?(text) do
+      String.trim_trailing(text)
+    else
+      indent = indent_expression(state.indentation)
+      "\n" <> indent <> String.trim(text)
+    end
   end
 
   # Returns either a line break or empty string. In case there is more than one
