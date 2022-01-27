@@ -175,11 +175,12 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp token_to_string({:eex_tag_render, tag, meta}, state) do
+    indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
     formatted_tag = format_eex(tag, state)
 
     case state.previous_token do
       nil ->
-        %{state | buffer: [formatted_tag | state.buffer]}
+        %{state | buffer: [formatted_tag | state.buffer], indentation: indentation}
 
       {:text, text, _meta} ->
         eex_tag =
@@ -189,10 +190,9 @@ defmodule HeexFormatter.Formatter do
             " " <> formatted_tag
           end
 
-        %{state | buffer: [eex_tag | state.buffer]}
+        %{state | buffer: [eex_tag | state.buffer], indentation: indentation}
 
       _token ->
-        indentation = if meta.block?, do: state.indentation + 1, else: state.indentation
         eex_tag = indent_expression(formatted_tag, state.indentation)
         %{state | buffer: [eex_tag | state.buffer], indentation: indentation}
     end

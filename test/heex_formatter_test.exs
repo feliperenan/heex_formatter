@@ -735,4 +735,36 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "proper indent if when it is in the beginning of the template" do
+    input = """
+    <%= if @live_action == :edit do %>
+    <.modal return_to={Routes.store_index_path(@socket, :index)}>
+      <.live_component
+        id={@product.id}
+        module={MystoreWeb.ReserveFormComponent}
+        action={@live_action}
+        product={@product}
+        return_to={Routes.store_index_path(@socket, :index)}
+      />
+    </.modal>
+    <% end %>
+    """
+
+    expected = """
+    <%= if @live_action == :edit do %>
+      <.modal return_to={Routes.store_index_path(@socket, :index)}>
+        <.live_component
+          id={@product.id}
+          module={MystoreWeb.ReserveFormComponent}
+          action={@live_action}
+          product={@product}
+          return_to={Routes.store_index_path(@socket, :index)}
+        />
+      </.modal>
+    <% end %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end
