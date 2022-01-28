@@ -449,6 +449,11 @@ defmodule HeexFormatter.Formatter do
   defp mode(_tag), do: :normal
 
   # Returns how given text formatted according to the current state.
+  defp handle_text(text, %{previous_token: {:eex_tag_render, _tag, %{block?: true}}} = state) do
+    indent = indent_expression(state.indentation)
+    "\n" <> indent <> String.trim(text)
+  end
+
   defp handle_text(text, %{previous_token: {:eex_tag_render, _tag, _meta}}) do
     " " <> String.trim(text)
   end
