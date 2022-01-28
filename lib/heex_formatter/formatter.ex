@@ -68,7 +68,7 @@ defmodule HeexFormatter.Formatter do
     |> then(&(&1 <> "\n"))
   end
 
-  @void_tags ~w(br hr input img link meta)
+  @void_tags ~w(area base br col hr img input link meta param command keygen source)
   defp token_to_string({:tag_open, tag, attrs, _} = node, state) when tag in @void_tags do
     indent = indent_expression(state.indentation)
     line_break = may_add_line_break(:tag_open, state.previous_token)
