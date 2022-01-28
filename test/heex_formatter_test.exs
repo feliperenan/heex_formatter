@@ -797,4 +797,19 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "format label block correctly" do
+    input = """
+    <%= label @f, :email_address, class: "text-gray font-medium" do %> Email Address
+    <% end %>
+    """
+
+    expected = """
+    <%= label @f, :email_address, class: "text-gray font-medium" do %>
+      Email Address
+    <% end %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end
