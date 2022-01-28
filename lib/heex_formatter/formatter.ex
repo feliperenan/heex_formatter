@@ -68,6 +68,31 @@ defmodule HeexFormatter.Formatter do
     |> then(&(&1 <> "\n"))
   end
 
+  @void_tags ~w(area base br col hr img input link meta param command keygen source)
+  defp token_to_string({:tag_open, tag, attrs, _} = node, state) when tag in @void_tags do
+    indent = indent_expression(state.indentation)
+    line_break = may_add_line_break(:tag_open, state.previous_token)
+
+    buffer =
+      if put_attrs_in_separeted_lines?(node, state.line_length) do
+        attrs_with_new_lines =
+          Enum.map_join(attrs, "\n", &"#{indent <> indent}#{render_attribute(&1)}")
+
+        [line_break <> "#{indent}<#{tag}\n#{attrs_with_new_lines}\n#{indent}/>" | state.buffer]
+      else
+        attrs_string =
+          attrs
+          |> Enum.map(&render_attribute/1)
+          |> Enum.intersperse(" ")
+          |> Enum.join("")
+          |> then(&if &1 != "", do: " #{&1}")
+
+        [line_break <> "#{indent}<#{tag}#{attrs_string} />" | state.buffer]
+      end
+
+    %{state | buffer: buffer, mode: mode(tag)}
+  end
+
   defp token_to_string({:tag_open, tag, attrs, meta} = node, state) do
     self_closed? = Map.get(meta, :self_close, false)
     indent = indent_expression(state.indentation)
