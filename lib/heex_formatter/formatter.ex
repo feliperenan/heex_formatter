@@ -37,7 +37,10 @@ defmodule HeexFormatter.Formatter do
       indentation: 0,
       line_length: opts[:heex_line_length] || opts[:line_length] || @default_line_length,
       formatter_opts: opts,
-      mode: :normal
+      mode: :normal,
+      # Set the eex block. We use it to identify case and cond statements so that
+      # we can indent them correctly.
+      eex_block: nil
     }
 
     tokens
@@ -231,17 +234,37 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp token_to_string({:eex_tag, "<% end %>" = tag, _meta}, state) do
-    indentation = state.indentation - 1
+    indentation =
+      if state.eex_block in ~w(case cond)a do
+        state.indentation - 2
+      else
+        state.indentation - 1
+      end
+
     eex_tag = indent_expression(tag, indentation)
 
-    %{state | buffer: [eex_tag | state.buffer], indentation: indentation}
+    %{state | buffer: [eex_tag | state.buffer], indentation: indentation, eex_block: nil}
   end
 
   # Handle eex_tag such as <% {:ok, result} -> %> present within case statements
   # or cond.
   defp token_to_string({:eex_tag, tag, %{block?: true}}, state) do
-    eex_tag = indent_expression(tag, state.indentation - 1)
-    %{state | buffer: [eex_tag | state.buffer]}
+    case state.previous_token do
+      {:eex_tag_render, eex_tag_render, %{block?: true}} ->
+        eex_block = extract_eex_block_name(eex_tag_render)
+        eex_tag = indent_expression(tag, state.indentation)
+
+        %{
+          state
+          | buffer: [eex_tag | state.buffer],
+            indentation: state.indentation + 1,
+            eex_block: eex_block
+        }
+
+      _token ->
+        eex_tag = indent_expression(tag, state.indentation - 1)
+        %{state | buffer: [eex_tag | state.buffer]}
+    end
   end
 
   defp token_to_string({:eex_tag, tag, _meta}, state) do
@@ -490,4 +513,18 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp line_break_or_empty_space?(text), do: String.trim(text) == ""
+
+  # Extracts the block name of the given eex tag render.
+  #
+  # Examples
+  #
+  #   iex> extract_eex_block_name("<%= case {:ok, "Hello"} %>")
+  #   :case
+  #
+  #   iex> extract_eex_block_name("<%= cond do %>")
+  #   :case
+  defp extract_eex_block_name("<%= " <> rest) do
+    [keyword | _rest] = String.split(rest)
+    String.to_existing_atom(keyword)
+  end
 end

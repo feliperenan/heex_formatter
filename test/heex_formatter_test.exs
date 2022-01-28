@@ -311,8 +311,12 @@ defmodule HeexFormatterTest do
     <%= case {:ok, "elixir"} do %>
     <% {:ok, text} -> %>
     <%= text %>
+    <p>text</p>
+    <div />
     <% {:error, error} -> %>
     <%= error %>
+    <p>error</p>
+    <div />
     <% end %>
     </div>
     """
@@ -320,10 +324,44 @@ defmodule HeexFormatterTest do
     expected = """
     <div>
       <%= case {:ok, "elixir"} do %>
-      <% {:ok, text} -> %>
-        <%= text %>
-      <% {:error, error} -> %>
-        <%= error %>
+        <% {:ok, text} -> %>
+          <%= text %>
+          <p>text</p>
+          <div />
+        <% {:error, error} -> %>
+          <%= error %>
+          <p>error</p>
+          <div />
+      <% end %>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle eex cond statement" do
+    input = """
+    <div>
+    <%= cond do %>
+    <% 1 == 1 -> %>
+    <%= "Hello" %>
+    <% 2 == 2 -> %>
+    <%= "World" %>
+    <% true -> %>
+    <%= "" %>
+    <% end %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <%= cond do %>
+        <% 1 == 1 -> %>
+          <%= "Hello" %>
+        <% 2 == 2 -> %>
+          <%= "World" %>
+        <% true -> %>
+          <%= "" %>
       <% end %>
     </div>
     """
@@ -604,8 +642,10 @@ defmodule HeexFormatterTest do
           <%= case value.type do %>
           <% :text -> %>
           Do something
+          <p>Hello</p>
           <% _ -> %>
-            Do something else
+          Do something else
+          <p>Hello</p>
           <% end %>
         </td>
       <% end %>
@@ -617,10 +657,12 @@ defmodule HeexFormatterTest do
       <%= for value <- @values do %>
         <td class="border-2">
           <%= case value.type do %>
-          <% :text -> %>
-            Do something
-          <% _ -> %>
-            Do something else
+            <% :text -> %>
+              Do something
+              <p>Hello</p>
+            <% _ -> %>
+              Do something else
+              <p>Hello</p>
           <% end %>
         </td>
       <% end %>
