@@ -72,56 +72,42 @@ defmodule HeexFormatter.Formatter do
   end
 
   @void_tags ~w(area base br col hr img input link meta param command keygen source)
-  defp token_to_string({:tag_open, tag, attrs, _} = node, state) when tag in @void_tags do
+
+  defp token_to_string({:tag_open, name, attrs, meta} = token, state) do
+    self_close? = Map.get(meta, :self_close, false)
     indent = indent_expression(state.indentation)
     line_break = may_add_line_break(:tag_open, state.previous_token)
 
-    tag_opened =
-      if put_attrs_in_separeted_lines?(node, state.line_length) do
-        tag_attrs = render_tag_attributes(:new_line, attrs, state.indentation)
-        "#{indent}<#{tag}\n#{tag_attrs}\n#{indent}/>"
+    attrs =
+      if put_attrs_in_separeted_lines?(token, state.line_length) do
+        {:new_line, render_tag_attributes(:new_line, attrs, state.indentation)}
       else
-        tag_attrs = render_tag_attributes(:current_line, attrs)
-        "#{indent}<#{tag}#{tag_attrs} />"
+        {:current_line, render_tag_attributes(:current_line, attrs)}
       end
 
-    %{state | buffer: [line_break <> tag_opened | state.buffer], mode: mode(tag)}
-  end
-
-  defp token_to_string({:tag_open, tag, attrs, %{self_close: true}} = token, state) do
-    indent = indent_expression(state.indentation)
-    line_break = may_add_line_break(:tag_open, state.previous_token)
-
     tag_opened =
-      if put_attrs_in_separeted_lines?(token, state.line_length) do
-        tag_attrs = render_tag_attributes(:new_line, attrs, state.indentation)
-        "#{indent}<#{tag}\n#{tag_attrs}\n#{indent}/>"
-      else
-        tag_attrs = render_tag_attributes(:current_line, attrs)
-        "#{indent}<#{tag}#{tag_attrs} />"
+      case attrs do
+        {:new_line, attrs} ->
+          suffix = if self_close?, do: "/>", else: ">"
+          "#{indent}<#{name}\n#{attrs}\n#{indent}#{suffix}"
+
+        {:current_line, attrs} ->
+          suffix = if self_close?, do: " />", else: ">"
+          "#{indent}<#{name}#{attrs}#{suffix}"
       end
 
-    %{state | buffer: [line_break <> tag_opened | state.buffer], mode: mode(tag)}
-  end
-
-  defp token_to_string({:tag_open, tag, attrs, _meta} = token, state) do
-    indent = indent_expression(state.indentation)
-    line_break = may_add_line_break(:tag_open, state.previous_token)
-
-    tag_opened =
-      if put_attrs_in_separeted_lines?(token, state.line_length) do
-        tag_attrs = render_tag_attributes(:new_line, attrs, state.indentation)
-        "#{indent}<#{tag}\n#{tag_attrs}\n#{indent}>"
+    indentation =
+      if self_close? || name in @void_tags do
+        state.indentation
       else
-        tag_attrs = render_tag_attributes(:current_line, attrs)
-        "#{indent}<#{tag}#{tag_attrs}>"
+        state.indentation + 1
       end
 
     %{
       state
       | buffer: [line_break <> tag_opened | state.buffer],
-        indentation: state.indentation + 1,
-        mode: mode(tag)
+        indentation: indentation,
+        mode: mode(name)
     }
   end
 
