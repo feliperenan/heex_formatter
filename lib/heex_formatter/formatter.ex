@@ -76,61 +76,53 @@ defmodule HeexFormatter.Formatter do
     indent = indent_expression(state.indentation)
     line_break = may_add_line_break(:tag_open, state.previous_token)
 
-    buffer =
-      if put_attrs_in_separeted_lines?(node, state.line_length) do
-        attrs_with_new_lines =
-          Enum.map_join(attrs, "\n", &"#{indent <> indent}#{render_attribute(&1)}")
-
-        [line_break <> "#{indent}<#{tag}\n#{attrs_with_new_lines}\n#{indent}/>" | state.buffer]
-      else
-        attrs_string =
-          attrs
-          |> Enum.map(&render_attribute/1)
-          |> Enum.intersperse(" ")
-          |> Enum.join("")
-          |> then(&if &1 != "", do: " #{&1}")
-
-        [line_break <> "#{indent}<#{tag}#{attrs_string} />" | state.buffer]
-      end
-
-    %{state | buffer: buffer, mode: mode(tag)}
-  end
-
-  defp token_to_string({:tag_open, tag, attrs, meta} = node, state) do
-    self_closed? = Map.get(meta, :self_close, false)
-    indent = indent_expression(state.indentation)
-
     tag_opened =
       if put_attrs_in_separeted_lines?(node, state.line_length) do
-        tag_prefix = "#{indent}<#{tag}\n"
-        tag_suffix = if self_closed?, do: "\n#{indent}/>", else: "\n#{indent}>"
-        indent_attrs = indent_expression(state.indentation + 1)
-
-        attrs_with_new_lines =
-          Enum.map_join(attrs, "\n", &"#{indent_attrs}#{render_attribute(&1)}")
-
-        tag_prefix <> attrs_with_new_lines <> tag_suffix
+        tag_attrs = render_tag_attributes(:new_line, attrs, state.indentation)
+        "#{indent}<#{tag}\n#{tag_attrs}\n#{indent}/>"
       else
-        attrs_string =
-          attrs
-          |> Enum.map(&render_attribute/1)
-          |> Enum.intersperse(" ")
-          |> Enum.join("")
-
-        tag_prefix = String.trim("<#{tag} #{attrs_string}")
-
-        if self_closed? do
-          "#{indent}#{tag_prefix} />"
-        else
-          "#{indent}#{tag_prefix}>"
-        end
+        tag_attrs = render_tag_attributes(:current_line, attrs)
+        "#{indent}<#{tag}#{tag_attrs} />"
       end
 
-    indentation = if self_closed?, do: state.indentation, else: state.indentation + 1
-    line_break = may_add_line_break(:tag_open, state.previous_token)
-    buffer = [line_break <> tag_opened | state.buffer]
+    %{state | buffer: [line_break <> tag_opened | state.buffer], mode: mode(tag)}
+  end
 
-    %{state | buffer: buffer, indentation: indentation, mode: mode(tag)}
+  defp token_to_string({:tag_open, tag, attrs, %{self_close: true}} = token, state) do
+    indent = indent_expression(state.indentation)
+    line_break = may_add_line_break(:tag_open, state.previous_token)
+
+    tag_opened =
+      if put_attrs_in_separeted_lines?(token, state.line_length) do
+        tag_attrs = render_tag_attributes(:new_line, attrs, state.indentation)
+        "#{indent}<#{tag}\n#{tag_attrs}\n#{indent}/>"
+      else
+        tag_attrs = render_tag_attributes(:current_line, attrs)
+        "#{indent}<#{tag}#{tag_attrs} />"
+      end
+
+    %{state | buffer: [line_break <> tag_opened | state.buffer], mode: mode(tag)}
+  end
+
+  defp token_to_string({:tag_open, tag, attrs, _meta} = token, state) do
+    indent = indent_expression(state.indentation)
+    line_break = may_add_line_break(:tag_open, state.previous_token)
+
+    tag_opened =
+      if put_attrs_in_separeted_lines?(token, state.line_length) do
+        tag_attrs = render_tag_attributes(:new_line, attrs, state.indentation)
+        "#{indent}<#{tag}\n#{tag_attrs}\n#{indent}>"
+      else
+        tag_attrs = render_tag_attributes(:current_line, attrs)
+        "#{indent}<#{tag}#{tag_attrs}>"
+      end
+
+    %{
+      state
+      | buffer: [line_break <> tag_opened | state.buffer],
+        indentation: state.indentation + 1,
+        mode: mode(tag)
+    }
   end
 
   defp token_to_string({:text, text, %{context: context}}, state) when is_list(context) do
@@ -347,6 +339,26 @@ defmodule HeexFormatter.Formatter do
       {attr, nil} ->
         ~s(#{attr})
     end
+  end
+
+  # Render tag attributes according to the given arguments.
+  #
+  # `:new_line`: it join `\n` for each attribute so that they will be rendered
+  #  in the next line. It also adds indentation + 1.
+  #
+  # `:current_line`: it will render each attribute separated by " ". Returns ""
+  #  in case there is no attrs to be rendered.
+  defp render_tag_attributes(:new_line, attrs, indentation) do
+    indent = indent_expression(indentation + 1)
+    Enum.map_join(attrs, "\n", &"#{indent}#{render_attribute(&1)}")
+  end
+
+  defp render_tag_attributes(:current_line, attrs) do
+    attrs
+    |> Enum.map(&render_attribute/1)
+    |> Enum.intersperse(" ")
+    |> Enum.join("")
+    |> then(&if &1 != "", do: " #{&1}")
   end
 
   # Format a given eex code to match provided indentation in HEEx template.
