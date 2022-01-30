@@ -54,7 +54,24 @@ defmodule HeexFormatter.Formatter do
       mode: :normal,
       # Set the eex block. We use it to identify case and cond statements so that
       # we can indent them correctly.
-      eex_block: nil
+      eex_block: nil,
+      format_tailwind: opts[:format_tailwind] || false,
+      tailwind_format_config:
+        if opts[:format_tailwind] do
+          tw_config_file =
+            YamlElixir.read_from_file!(Application.fetch_env!(:heex_formatter, :tw_config_file))
+
+          classes_order = Map.fetch!(tw_config_file, "classes_order")
+
+          %{
+            class_groups: Map.keys(classes_order),
+            sort_order: classes_order |> Map.values() |> List.flatten(),
+            classes_order: classes_order,
+            variants_order: tw_config_file["variants_order"]
+          }
+        else
+          %{}
+        end
     }
 
     tokens
@@ -91,10 +108,10 @@ defmodule HeexFormatter.Formatter do
     line_break = may_add_line_break(state.previous_token)
 
     attrs =
-      if put_attrs_in_separeted_lines?(token, state.line_length) do
-        {:new_line, render_tag_attributes(:new_line, attrs, state.indentation)}
+      if put_attrs_in_separeted_lines?(token, state) do
+        {:new_line, render_tag_attributes(:new_line, attrs, state)}
       else
-        {:current_line, render_tag_attributes(:current_line, attrs)}
+        {:current_line, render_tag_attributes(:current_line, attrs, state)}
       end
 
     tag_opened =
@@ -297,7 +314,10 @@ defmodule HeexFormatter.Formatter do
     String.duplicate(@tab, max(0, indentation))
   end
 
-  defp put_attrs_in_separeted_lines?({:tag_open, tag, attrs, meta}, max_line_length) do
+  defp put_attrs_in_separeted_lines?(
+         {:tag_open, tag, attrs, meta},
+         %{line_length: max_line_length} = state
+       ) do
     self_closed? = Map.get(meta, :self_close, false)
 
     # Calculate attrs length. It considers 1 space between each attribute, that
@@ -306,7 +326,7 @@ defmodule HeexFormatter.Formatter do
       attrs
       |> Enum.map(fn attr ->
         attr
-        |> render_attribute()
+        |> render_attribute(state)
         |> String.length()
         |> then(&(&1 + 1))
       end)
@@ -322,30 +342,17 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
-  # Render tag attributes according to the given arguments.
-  #
-  # `:new_line`: it join `\n` for each attribute so that they will be rendered
-  #  in the next line. It also adds indentation + 1.
-  #
-  # `:current_line`: it will render each attribute separated by " ". Returns ""
-  #  in case there is no attrs to be rendered.
-  defp render_tag_attributes(:new_line, attrs, indentation) do
-    indent = indent_expression(indentation + 1)
-    Enum.map_join(attrs, "\n", &"#{indent}#{render_attribute(&1)}")
-  end
-
-  defp render_tag_attributes(:current_line, attrs) do
-    attrs
-    |> Enum.map(&render_attribute/1)
-    |> Enum.intersperse(" ")
-    |> Enum.join("")
-    |> then(&if &1 != "", do: " #{&1}")
-  end
-
-  defp render_attribute(attr) do
+  defp render_attribute(attr, state) do
     case attr do
       {:root, {:expr, expr, _}} ->
         ~s({#{expr}})
+
+      {"class", {:string, classes, _meta}} ->
+        if state.format_tailwind do
+          ~s(class="#{format_tailwind(state, classes)}")
+        else
+          ~s(class="#{classes}")
+        end
 
       {attr, {:string, value, _meta}} ->
         ~s(#{attr}="#{value}")
@@ -359,6 +366,158 @@ defmodule HeexFormatter.Formatter do
       {attr, nil} ->
         ~s(#{attr})
     end
+  end
+
+  defp format_tailwind(state, classes) do
+    classes
+    |> String.trim()
+    |> String.split(" ")
+    |> Enum.uniq()
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(&sort_tailwind_variants(&1, state.tailwind_format_config.variants_order))
+    |> Enum.sort_by(&calc_tailwind_sort_key(state.tailwind_format_config, &1))
+    |> Enum.join(" ")
+  end
+
+  defp sort_tailwind_variants(class, variants_order) do
+    if String.contains?(class, ":") do
+      {css_class, variants} = class |> String.split(":") |> List.pop_at(-1)
+
+      sorted_variants =
+        Enum.sort_by(variants, fn variant -> Enum.find_index(variants_order, &(&1 == variant)) end)
+
+      Enum.join(sorted_variants, ":") <> ":" <> css_class
+    else
+      class
+    end
+  end
+
+  # Helper that calculate tailwind sort key based on classes order defined in tailwind config.
+  #
+  # Examples
+  #
+  #    iex> calc_tailwind_sort_key(state.tailwind_format_config, "w-full")
+  #    "08,00,00,0526"
+  defp calc_tailwind_sort_key(
+         %{
+           class_groups: class_groups,
+           classes_order: classes_order,
+           sort_order: sort_order,
+           variants_order: variants_order
+         },
+         class
+       ) do
+    {css_class, variants} = class |> String.split(":") |> List.pop_at(-1)
+
+    class_sort_key =
+      String.pad_leading(
+        to_string(Enum.find_index(class_groups, &(class in classes_order[&1])) || 0),
+        2,
+        "0"
+      )
+
+    variant_1_sort_key =
+      if variant_1 = Enum.at(variants, 0) do
+        String.pad_leading(
+          to_string(Enum.find_index(variants_order, &(&1 == variant_1)) || 0),
+          2,
+          "0"
+        )
+      else
+        "00"
+      end
+
+    variant_2_sort_key =
+      if variant_2 = Enum.at(variants, 1) do
+        String.pad_leading(
+          to_string(Enum.find_index(variants_order, &(&1 == variant_2)) || 0),
+          2,
+          "0"
+        )
+      else
+        "00"
+      end
+
+    css_class_sort_key =
+      String.pad_leading(
+        to_string(Enum.find_index(sort_order, &(&1 == css_class)) || 0),
+        4,
+        "0"
+      )
+
+    Enum.join([class_sort_key, variant_1_sort_key, variant_2_sort_key, css_class_sort_key], ",")
+  end
+
+  # Render tag attributes according to the given arguments.
+  #
+  # `:new_line`: it join `\n` for each attribute so that they will be rendered
+  #  in the next line. It also adds indentation + 1.
+  #
+  # `:current_line`: it will render each attribute separated by " ". Returns ""
+  #  in case there is no attrs to be rendered.
+  defp render_tag_attributes(:new_line, attrs, %{indentation: indentation} = state) do
+    indent = indent_expression(indentation + 1)
+    Enum.map_join(attrs, "\n", &"#{indent}#{render_attribute(&1, state)}")
+  end
+
+  defp render_tag_attributes(:current_line, attrs, state) do
+    attrs
+    |> Enum.map(&render_attribute(&1, state))
+    |> Enum.intersperse(" ")
+    |> Enum.join("")
+    |> then(&if &1 != "", do: " #{&1}")
+  end
+
+  # Format a given eex code to match provided indentation in HEEx template.
+  #
+  # Given the following code:
+  #
+  # "form_for @changeset, Routes.user_path(@conn, :create), [class: "w-full", phx_change: "on_change"], fn f ->"
+  #
+  # The following string will be returned:
+  #
+  # <%= form_for @changeset,
+  #            Routes.user_path(@conn, :create),
+  #            [class: \"w-full\", phx_change: \"on_change\"],
+  #            fn f -> %>
+  defp format_eex(code, state) do
+    code = String.replace(code, ["<%= ", " %>"], "")
+
+    formatted_code =
+      cond do
+        code =~ ~r/\sdo\z/m ->
+          format_ends_with_do(code, state.formatter_opts)
+
+        String.ends_with?(code, "->") ->
+          format_ends_with_priv_fn(code, state.formatter_opts)
+
+        true ->
+          run_formatter(code, state.formatter_opts)
+      end
+
+    formatted_code
+    |> String.split("\n")
+    |> Enum.join("\n" <> String.duplicate(@tab, state.indentation))
+    |> then(fn formatted_code ->
+      if state.format_tailwind do
+        case Regex.scan(~r/class: \"(.*?)\"/, formatted_code) do
+          [] ->
+            formatted_code
+
+          [[_, classes]] ->
+            formatted_classes = format_tailwind(state, classes)
+
+            String.replace(
+              formatted_code,
+              ~r/class: \"(.*?)\"/,
+              "class: \"#{formatted_classes}\""
+            )
+        end
+      else
+        formatted_code
+      end
+    end)
+    |> then(&"<%= #{&1} %>")
   end
 
   # Check if the given tag contains line breaks in the given html state.
@@ -467,38 +626,6 @@ defmodule HeexFormatter.Formatter do
   defp extract_eex_block_name("<%= " <> rest) do
     [keyword | _rest] = String.split(rest)
     String.to_existing_atom(keyword)
-  end
-
-  # Format a given eex code to match provided indentation in HEEx template.
-  #
-  # Given the following code:
-  #
-  # "form_for @changeset, Routes.user_path(@conn, :create), [class: "w-full", phx_change: "on_change"], fn f ->"
-  #
-  # The following string will be returned:
-  #
-  # <%= form_for @changeset,
-  #            Routes.user_path(@conn, :create),
-  #            [class: \"w-full\", phx_change: \"on_change\"],
-  #            fn f -> %>
-  defp format_eex(code, state) do
-    code = String.replace(code, ["<%= ", " %>"], "")
-
-    formatted_code =
-      cond do
-        code =~ ~r/\sdo\z/m ->
-          format_ends_with_do(code, state.formatter_opts)
-
-        String.ends_with?(code, "->") ->
-          format_ends_with_priv_fn(code, state.formatter_opts)
-
-        true ->
-          run_formatter(code, state.formatter_opts)
-      end
-      |> String.split("\n")
-      |> Enum.join("\n" <> String.duplicate(@tab, state.indentation))
-
-    "<%= #{formatted_code} %>"
   end
 
   defp format_ends_with_do(code, formatter_opts) do

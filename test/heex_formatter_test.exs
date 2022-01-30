@@ -854,4 +854,22 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "format tailwind classes" do
+    input = """
+    <div>
+    <input type="text" value="A" class="w-full   p-3 flex  focus:sm:block   flex">
+    <%= text_input value: "A", class: "w-full p-3 flex focus:sm:block" %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <input type="text" value="A" class="sm:focus:block flex w-full p-3">
+      <%= text_input(value: "A", class: "sm:focus:block flex w-full p-3") %>
+    </div>
+    """
+
+    assert_formatter_output(input, expected, format_tailwind: true)
+  end
 end

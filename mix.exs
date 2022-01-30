@@ -26,7 +26,8 @@ defmodule HeexFormatter.MixProject do
       # https://github.com/phoenixframework/phoenix_live_view/pull/1847
       {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
       {:jason, "~> 1.3"},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:yaml_elixir, "~> 2.8"}
     ]
   end
 end
