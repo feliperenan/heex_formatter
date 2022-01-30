@@ -50,4 +50,17 @@ Set `heex_line_length` to only set the line:lenght for the heex formatter.
 ]
 ```
 
+#### Format Tailwind
+
+Optionally, you can enable Tailwind format, which ensures the uniqueness of the classes used on elements and sort them following the order on [tailwind_format.yml](./config/tailwind_format.yml).
+
+Set `format_tailwind` to enable this feature.
+
+```elixir
+[
+  # ...omitted
+  format_tailwind: true
+]
+```
+
 Inspired by [Surface Formatter](https://github.com/surface-ui/surface_formatter).
