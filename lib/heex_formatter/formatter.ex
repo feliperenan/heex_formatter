@@ -11,24 +11,38 @@ defmodule HeexFormatter.Formatter do
   # be formatted.
   @special_modes ~w(script style code pre comment)a
 
+  # List void tags to be handled on `tag_open`.
+  @void_tags ~w(area base br col hr img input link meta param command keygen source)
+
   @doc """
-  Transform the given tokens into a string formatting it.
+  Format the given tokens according to the given options.
 
-  Given the following nodes:
+  ### Options
 
-  [
-    {:tag_open, "section", [], %{column: 1, line: 1}},
-    {:tag_open, "div", [], %{column: 1, line: 2}},
-    {:tag_open, "h1", [], %{column: 1, line: 3}},
-    {:text, "Hello", %{column_end: 10, line_end: 3}},
-    {:tag_close, "h1", %{column: 10, line: 3}},
-    {:tag_close, "div", %{column: 1, line: 4}},
-    {:tag_close, "section", %{column: 1, line: 5}}
-  ]
+  It take all options at `.formatter.exs` as it does for Mix format since it uses
+  these options to format Elixir code.
 
-  The following string will be returned:
+  https://hexdocs.pm/mix/main/Mix.Tasks.Format.html#module-formatting-options
 
-  "<section>\n  <div>\n    <h1>\n      Hello\n    </h1>\n  </div>\n</section>\n"
+  In addition, these options are taken:
+
+  `heex_line_length`: maximum line length for heex templates. In case it is not
+  the provided, it tries to use `line_length` or `@default_line_length`.
+
+  ### Examples
+
+    iex> tokens = [
+    ...>   {:tag_open, "section", [], %{column: 1, line: 1}},
+    ...>   {:tag_open, "div", [], %{column: 1, line: 2}},
+    ...>   {:tag_open, "h1", [], %{column: 1, line: 3}},
+    ...>   {:text, "Hello", %{column_end: 10, line_end: 3}},
+    ...>   {:tag_close, "h1", %{column: 10, line: 3}},
+    ...>   {:tag_close, "div", %{column: 1, line: 4}},
+    ...>   {:tag_close, "section", %{column: 1, line: 5}}
+    ...> ]
+    iex> HeexFormatter.Formatter.format(tokens, [])
+    "<section>\n  <div>\n    <h1>\n      Hello\n    </h1>\n  </div>\n</section>\n"
+
   """
   def format(tokens, opts) do
     initial_state = %{
@@ -71,12 +85,10 @@ defmodule HeexFormatter.Formatter do
     |> then(&(&1 <> "\n"))
   end
 
-  @void_tags ~w(area base br col hr img input link meta param command keygen source)
-
   defp token_to_string({:tag_open, name, attrs, meta} = token, state) do
     self_close? = Map.get(meta, :self_close, false)
     indent = indent_expression(state.indentation)
-    line_break = may_add_line_break(:tag_open, state.previous_token)
+    line_break = may_add_line_break(state.previous_token)
 
     attrs =
       if put_attrs_in_separeted_lines?(token, state.line_length) do
@@ -111,6 +123,8 @@ defmodule HeexFormatter.Formatter do
     }
   end
 
+  # Handle HTMl comments when the given token contains `context.` Here, we don't
+  # format the text, we just ensure one `\n` at the end and set the mode as `:comment`.
   defp token_to_string({:text, text, %{context: context}}, state) when is_list(context) do
     mode = if :comment_start in context, do: :comment, else: :normal
 
@@ -308,6 +322,26 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
+  # Render tag attributes according to the given arguments.
+  #
+  # `:new_line`: it join `\n` for each attribute so that they will be rendered
+  #  in the next line. It also adds indentation + 1.
+  #
+  # `:current_line`: it will render each attribute separated by " ". Returns ""
+  #  in case there is no attrs to be rendered.
+  defp render_tag_attributes(:new_line, attrs, indentation) do
+    indent = indent_expression(indentation + 1)
+    Enum.map_join(attrs, "\n", &"#{indent}#{render_attribute(&1)}")
+  end
+
+  defp render_tag_attributes(:current_line, attrs) do
+    attrs
+    |> Enum.map(&render_attribute/1)
+    |> Enum.intersperse(" ")
+    |> Enum.join("")
+    |> then(&if &1 != "", do: " #{&1}")
+  end
+
   defp render_attribute(attr) do
     case attr do
       {:root, {:expr, expr, _}} ->
@@ -327,24 +361,112 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
-  # Render tag attributes according to the given arguments.
+  # Check if the given tag contains line breaks in the given html state.
   #
-  # `:new_line`: it join `\n` for each attribute so that they will be rendered
-  #  in the next line. It also adds indentation + 1.
+  # Useful to know if we should either close the tag in the current line or
+  # in the next line. For instance:
   #
-  # `:current_line`: it will render each attribute separated by " ". Returns ""
-  #  in case there is no attrs to be rendered.
-  defp render_tag_attributes(:new_line, attrs, indentation) do
-    indent = indent_expression(indentation + 1)
-    Enum.map_join(attrs, "\n", &"#{indent}#{render_attribute(&1)}")
+  #   should close the tag in the current line.
+  #   <p>My title
+  #
+  #   should close the tag in the next line.
+  #   <p class="some-class">  \nShould break line
+  defp tag_open_with_line_break?(buffer, tag) do
+    buffer
+    |> current_tag_open([], tag)
+    |> String.contains?("\n")
   end
 
-  defp render_tag_attributes(:current_line, attrs) do
-    attrs
-    |> Enum.map(&render_attribute/1)
-    |> Enum.intersperse(" ")
-    |> Enum.join("")
-    |> then(&if &1 != "", do: " #{&1}")
+  defp current_tag_open([head | rest], buffer, tag) do
+    if String.contains?(head, "<#{tag}>") do
+      current_tag_open([], buffer, tag)
+    else
+      current_tag_open(rest, [head | buffer], tag)
+    end
+  end
+
+  defp current_tag_open([], buffer, _tag), do: IO.iodata_to_binary(buffer)
+
+  # Returns an empty space or a "\n".
+  #
+  # At the moment this is only used for tag_open. The general rule is that it
+  # should break line. The exception # is when there is no previous_token or the
+  # previous_token is a HTML comment.
+  defp may_add_line_break(nil), do: ""
+
+  defp may_add_line_break({:text, _text, %{context: context}})
+       when is_list(context),
+       do: ""
+
+  defp may_add_line_break({:text, text, _meta}) do
+    if html_comment?(text), do: "", else: "\n"
+  end
+
+  defp may_add_line_break(_token), do: "\n"
+
+  defp html_comment?(text),
+    do: String.contains?(text, "<!--") and String.contains?(text, "-->")
+
+  # Returns `script`, `style`, `code` or `pre` when the given tag is one of these
+  # tags. Otherwise, it returns `normal`.
+  defp mode(tag) when tag in ~w(script style code pre), do: String.to_existing_atom(tag)
+  defp mode(_tag), do: :normal
+
+  # Returns how given text formatted according to the current state.
+  defp handle_text(text, %{previous_token: {:eex_tag_render, _tag, %{block?: true}}} = state) do
+    indent = indent_expression(state.indentation)
+    "\n" <> indent <> String.trim(text)
+  end
+
+  defp handle_text(text, %{previous_token: {:eex_tag_render, _tag, _meta}}) do
+    " " <> String.trim(text)
+  end
+
+  # In case the previous token is a tag open, this will check if the text
+  # should either go to the current line or next line. Tag with attributes
+  # always go to the next line.
+  defp handle_text(text, %{previous_token: {:tag_open, _tag, attrs, _meta}} = state) do
+    text = String.trim(text)
+
+    if String.length(text) < state.line_length and Enum.empty?(attrs) do
+      text
+    else
+      indent = indent_expression(state.indentation)
+      "\n" <> indent <> text
+    end
+  end
+
+  defp handle_text(text, state) do
+    if html_comment?(text) do
+      String.trim_trailing(text)
+    else
+      indent = indent_expression(state.indentation)
+      "\n" <> indent <> String.trim(text)
+    end
+  end
+
+  # Returns either a line break or empty string. In case there is more than one
+  # line break, it means that we should keep one line break.
+  defp handle_line_break(text) do
+    line_breaks_count = text |> String.graphemes() |> Enum.count(&(&1 == "\n"))
+
+    if line_breaks_count > 1, do: "\n", else: ""
+  end
+
+  defp line_break_or_empty_space?(text), do: String.trim(text) == ""
+
+  # Extracts the block name of the given eex tag render.
+  #
+  # Examples
+  #
+  #   iex> extract_eex_block_name("<%= case {:ok, "Hello"} %>")
+  #   :case
+  #
+  #   iex> extract_eex_block_name("<%= cond do %>")
+  #   :cond
+  defp extract_eex_block_name("<%= " <> rest) do
+    [keyword | _rest] = String.split(rest)
+    String.to_existing_atom(keyword)
   end
 
   # Format a given eex code to match provided indentation in HEEx template.
@@ -417,112 +539,5 @@ defmodule HeexFormatter.Formatter do
     code
     |> Code.format_string!(opts)
     |> IO.iodata_to_binary()
-  end
-
-  # Check if the given tag contains line breaks in the given html state.
-  #
-  # Useful to know if we should either close the tag in the current line or
-  # in the next line. For instance:
-  #
-  #   should close the tag in the current line.
-  #   <p>My title
-  #
-  #   should close the tag in the next line.
-  #   <p class="some-class">  \nShould break line
-  defp tag_open_with_line_break?(buffer, tag) do
-    buffer
-    |> current_tag_open([], tag)
-    |> String.contains?("\n")
-  end
-
-  defp current_tag_open([head | rest], buffer, tag) do
-    if String.contains?(head, "<#{tag}>") do
-      current_tag_open([], buffer, tag)
-    else
-      current_tag_open(rest, [head | buffer], tag)
-    end
-  end
-
-  defp current_tag_open([], buffer, _tag), do: IO.iodata_to_binary(buffer)
-
-  # Returns an empty space or a "\n".
-  #
-  # * For tag_open, the general rule is that it should break line. The exception
-  #   is when there is no previous_token or the previous_token is a HTML comment.
-  defp may_add_line_break(:tag_open, nil), do: ""
-
-  defp may_add_line_break(:tag_open, {:text, _text, %{context: context}})
-       when is_list(context),
-       do: ""
-
-  defp may_add_line_break(:tag_open, {:text, text, _meta}) do
-    if html_comment?(text), do: "", else: "\n"
-  end
-
-  defp may_add_line_break(:tag_open, _token), do: "\n"
-
-  defp html_comment?(text),
-    do: String.contains?(text, "<!--") and String.contains?(text, "-->")
-
-  # Returns `script`, `style`, `code` or `pre` when the given tag is one of these
-  # tags. Otherwise, it returns `normal`.
-  defp mode(tag) when tag in ~w(script style code pre), do: String.to_existing_atom(tag)
-  defp mode(_tag), do: :normal
-
-  # Returns how given text formatted according to the current state.
-  defp handle_text(text, %{previous_token: {:eex_tag_render, _tag, %{block?: true}}} = state) do
-    indent = indent_expression(state.indentation)
-    "\n" <> indent <> String.trim(text)
-  end
-
-  defp handle_text(text, %{previous_token: {:eex_tag_render, _tag, _meta}}) do
-    " " <> String.trim(text)
-  end
-
-  # In case the previous token is a tag open, this will check if the text
-  # should either go to the current line or next line. Tag with attributes
-  # always go to the next line.
-  defp handle_text(text, %{previous_token: {:tag_open, _tag, attrs, _meta}} = state) do
-    text = String.trim(text)
-
-    if String.length(text) < state.line_length and Enum.empty?(attrs) do
-      text
-    else
-      indent = indent_expression(state.indentation)
-      "\n" <> indent <> text
-    end
-  end
-
-  defp handle_text(text, state) do
-    if html_comment?(text) do
-      String.trim_trailing(text)
-    else
-      indent = indent_expression(state.indentation)
-      "\n" <> indent <> String.trim(text)
-    end
-  end
-
-  # Returns either a line break or empty string. In case there is more than one
-  # line break, it means that we should keep one line break.
-  defp handle_line_break(text) do
-    line_breaks_count = text |> String.graphemes() |> Enum.count(&(&1 == "\n"))
-
-    if line_breaks_count > 1, do: "\n", else: ""
-  end
-
-  defp line_break_or_empty_space?(text), do: String.trim(text) == ""
-
-  # Extracts the block name of the given eex tag render.
-  #
-  # Examples
-  #
-  #   iex> extract_eex_block_name("<%= case {:ok, "Hello"} %>")
-  #   :case
-  #
-  #   iex> extract_eex_block_name("<%= cond do %>")
-  #   :case
-  defp extract_eex_block_name("<%= " <> rest) do
-    [keyword | _rest] = String.split(rest)
-    String.to_existing_atom(keyword)
   end
 end
