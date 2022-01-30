@@ -495,12 +495,8 @@ defmodule HeexFormatter.Formatter do
         true ->
           run_formatter(code, state.formatter_opts)
       end
-
-    formatted_code =
-      Enum.join(
-        String.split(formatted_code, "\n"),
-        "\n" <> String.duplicate(@tab, state.indentation)
-      )
+      |> String.split("\n")
+      |> Enum.join("\n" <> String.duplicate(@tab, state.indentation))
 
     "<%= #{formatted_code} %>"
   end
