@@ -828,12 +828,12 @@ defmodule HeexFormatterTest do
         rel="shortcut icon"
         href={Routes.static_path(@conn, "/images/favicon.png")}
         type="image/x-icon"
-      />
+      >
       <p>some text</p>
-      <br />
-      <hr />
-      <input type="text" value="Foo Bar" />
-      <img src="./image.png" />
+      <br>
+      <hr>
+      <input type="text" value="Foo Bar">
+      <img src="./image.png">
     </div>
     """
 
