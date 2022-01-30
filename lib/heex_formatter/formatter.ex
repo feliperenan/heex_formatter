@@ -58,8 +58,14 @@ defmodule HeexFormatter.Formatter do
       format_tailwind: opts[:format_tailwind] || false,
       tailwind_format_config:
         if opts[:format_tailwind] do
-          tw_config_file =
-            YamlElixir.read_from_file!(Application.fetch_env!(:heex_formatter, :tw_config_file))
+          tw_config_file_path =
+            Application.get_env(
+              :heex_formatter,
+              :tw_config_file,
+              Path.join(__DIR__, "/../../config/tailwind_format.yml")
+            )
+
+          tw_config_file = YamlElixir.read_from_file!(tw_config_file_path)
 
           classes_order = Map.fetch!(tw_config_file, "classes_order")
 
