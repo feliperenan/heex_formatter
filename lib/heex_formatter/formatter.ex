@@ -437,11 +437,16 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp handle_text(text, state) do
-    if html_comment?(text) do
-      String.trim_trailing(text)
-    else
-      indent = indent_expression(state.indentation)
-      "\n" <> indent <> String.trim(text)
+    cond do
+      html_comment?(text) ->
+        String.trim_trailing(text)
+
+      String.contains?(text, "<!DOCTYPE html>") ->
+        String.trim(text)
+
+      true ->
+        indent = indent_expression(state.indentation)
+        "\n" <> indent <> String.trim(text)
     end
   end
 
