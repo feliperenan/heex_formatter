@@ -21,7 +21,7 @@ defp deps do
 end
 ```
 
-Add it as plugin to your project `.formatter` file.
+Add it as plugin to your project `.formatter.exs` file.
 
 ```elixir
 [
