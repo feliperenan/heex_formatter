@@ -854,4 +854,20 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "does not add newline after DOCTYPE" do
+    input = """
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+      </head>
+      <body>
+        <%= @inner_content %>
+      </body>
+    </html>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
 end
