@@ -14,18 +14,20 @@ defmodule HeexFormatter.Tokenizer do
 
   [
     {:tag_open, "section", [], %{column: 1, line: 1}},
+    {:text, "\n  ", %{column_end: 3, line_end: 2}},
     {:tag_open, "p", [], %{column: 3, line: 2}},
-    {:eex_tag_render, "<%= user.name ></p>\n  <%= if true do %>", {block?: true, column: 6, line: 1}},
+    {:eex_tag_render, "<%= user.name ></p>\n  <%= if true do %>", %{block?: true, column: 6, line: 1}},
     {:text, " ", %{column_end: 2, line_end: 1}},
     {:tag_open, "p", [], %{column: 2, line: 1}},
     {:text, "deu bom", %{column_end: 12, line_end: 1}},
     {:tag_close, "p", %{column: 12, line: 1}},
-    {:eex_tag, "<% else %>", %{column: 35, line: 2}},
+    {:eex_tag, "<% else %>", %{block?: false, column: 35, line: 2}},
     {:tag_open, "p", [], %{column: 1, line: 1}},
     {:text, " deu ruim ", %{column_end: 14, line_end: 1}},
     {:tag_close, "p", %{column: 14, line: 1}},
-    {:eex_tag, "<% end %>", %{column: 62, line: 2}},
-    {:tag_close, "section", %{column: 1, line: 2}},
+    {:eex_tag, "<% end %>", %{block?: false, column: 62, line: 2}},
+    {:text, "\n", %{column_end: 1, line_end: 2}},
+    {:tag_close, "section", %{column: 1, line: 2}}
   ]
 
   Notice that it adds custom identifiers to eex expressions such as `eex_tag_render` and
