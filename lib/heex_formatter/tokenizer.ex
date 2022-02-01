@@ -50,14 +50,13 @@ defmodule HeexFormatter.Tokenizer do
   defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
     render = List.to_string(opt)
     expr = expr |> List.to_string() |> String.trim()
-    block? = String.ends_with?(expr, "do") || String.ends_with?(expr, "->")
-    meta = %{column: column, line: line, block?: block?}
+    meta = %{column: column, line: line, block?: String.ends_with?(expr, "do")}
 
     token =
       if render == "=" do
-        {:eex_tag_render, "<%= #{expr} %>", meta}
+        {:eex_tag, "=", expr, meta}
       else
-        {:eex_tag, "<% #{expr} %>", meta}
+        {:eex_tag, expr, meta}
       end
 
     {[token | tokens], cont}

@@ -8,7 +8,6 @@ defmodule HeexFormatter.HtmlTree do
     to_tree(tokens, [], [])
   end
 
-  def to_tree([], buffer, [:tag_close | tree]), do: to_tree([], buffer, tree)
   def to_tree([], _buffer, tree), do: Enum.reverse(tree)
 
   def to_tree([{:tag_open, _n, _a, _m} = token | tokens], [], []) do
@@ -19,8 +18,8 @@ defmodule HeexFormatter.HtmlTree do
     to_tree(tokens, [], [build_tag_block(token) | buffer])
   end
 
-  def to_tree([{:tag_open, _n, _a, _m} = token | tokens], buffer, [:tag_close | rest]) do
-    to_tree(tokens, buffer, [build_tag_block(token) | rest])
+  def to_tree([{:tag_open, _n, _a, _m} = token | tokens], [:tag_close], tree) do
+    to_tree(tokens, [], [build_tag_block(token) | tree])
   end
 
   def to_tree([{:tag_open, _n, _a, _m} = token | tokens], buffer, [current | rest] = tree) do
@@ -33,13 +32,21 @@ defmodule HeexFormatter.HtmlTree do
     end
   end
 
+  def to_tree([{:eex_tag, "=", _exp, %{block?: false}} = token | tokens], buffer, tree) do
+    case buffer do
+      [tag_block | rest] ->
+        to_tree(tokens, [add_to_children(tag_block, token) | rest], tree)
+
+      [] ->
+        to_tree(tokens, [token | buffer], tree)
+    end
+  end
+
   def to_tree([{:text, text, _meta} = token | tokens], buffer, tree) do
     # Ignore when it is either a new_line and/or empty spaces.
     if String.trim(text) == "" do
       to_tree(tokens, buffer, tree)
     else
-      # Otherwise check the buffer, then adds it to the buffer in case there is
-      # one or add to directly to the tree.
       case buffer do
         [tag_block | rest] ->
           to_tree(tokens, [add_to_children(tag_block, token) | rest], tree)
@@ -51,12 +58,18 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   def to_tree([{:tag_close, _name, _meta} | tokens], [], tree) do
-    to_tree(tokens, [], [:tag_close | tree])
+    to_tree(tokens, [:tag_close], tree)
+  end
+
+  def to_tree([{:tag_close, _name, _meta} | tokens], [:tag_close], tree) do
+    to_tree(tokens, [:tag_close], tree)
   end
 
   def to_tree([{:tag_close, _name, _meta} | tokens], buffer, [current | rest]) do
-    to_tree(tokens, [], [:tag_close, add_to_tag_block(current, buffer) | rest])
+    to_tree(tokens, [:tag_close], [add_to_tag_block(current, buffer) | rest])
   end
+
+  # Helpers
 
   defp build_tag_block({:tag_open, name, attrs, meta}) do
     {:tag_block, name, attrs, meta, []}
