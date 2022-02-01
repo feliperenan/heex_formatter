@@ -5,84 +5,55 @@ defmodule HeexFormatter.HtmlTree do
   Build an HTML Tree givens tokens from `Tokenizer.tokenize/1`
   """
   def build(tokens) do
-    to_tree(tokens, [], [])
+    build(tokens, [], [])
   end
 
-  def to_tree([], _buffer, tree), do: Enum.reverse(tree)
-
-  def to_tree([{:tag_open, _n, _a, _m} = token | tokens], [], []) do
-    to_tree(tokens, [], [build_tag_block(token)])
+  defp build([], buffer, []) do
+    Enum.reverse(buffer)
   end
 
-  def to_tree([{:tag_open, _n, _a, _m} = token | tokens], buffer, []) do
-    to_tree(tokens, [], [build_tag_block(token) | buffer])
-  end
-
-  def to_tree([{:tag_open, _n, _a, _m} = token | tokens], [:tag_close], tree) do
-    to_tree(tokens, [], [build_tag_block(token) | tree])
-  end
-
-  def to_tree([{:tag_open, _n, _a, _m} = token | tokens], buffer, [current | rest] = tree) do
-    tag_block = build_tag_block(token)
-
-    if tag_block?(current) do
-      to_tree(tokens, [tag_block | buffer], [add_to_children(current, tag_block) | rest])
-    else
-      to_tree(tokens, buffer, [tag_block | tree])
-    end
-  end
-
-  def to_tree([{:eex_tag, "=", _exp, %{block?: false}} = token | tokens], buffer, tree) do
-    case buffer do
-      [tag_block | rest] ->
-        to_tree(tokens, [add_to_children(tag_block, token) | rest], tree)
-
-      [] ->
-        to_tree(tokens, [token | buffer], tree)
-    end
-  end
-
-  def to_tree([{:text, text, _meta} = token | tokens], buffer, tree) do
+  defp build([{:text, text, _meta} | tokens], buffer, stack) do
+    # TODO: we might want to handle this in the tokenizer.
     # Ignore when it is either a new_line and/or empty spaces.
     if String.trim(text) == "" do
-      to_tree(tokens, buffer, tree)
+      build(tokens, buffer, stack)
     else
-      case buffer do
-        [tag_block | rest] ->
-          to_tree(tokens, [add_to_children(tag_block, token) | rest], tree)
-
-        [] ->
-          to_tree(tokens, [token | buffer], tree)
-      end
+      build(tokens, [{:text, text} | buffer], stack)
     end
   end
 
-  def to_tree([{:tag_close, _name, _meta} | tokens], [], tree) do
-    to_tree(tokens, [:tag_close], tree)
+  defp build([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do
+    build(tokens, [{:tag, name, attrs} | buffer], stack)
   end
 
-  def to_tree([{:tag_close, _name, _meta} | tokens], [:tag_close], tree) do
-    to_tree(tokens, [:tag_close], tree)
+  defp build([{:tag_open, name, attrs, _meta} | tokens], buffer, stack) do
+    build(tokens, [], [{name, attrs, buffer} | stack])
   end
 
-  def to_tree([{:tag_close, _name, _meta} | tokens], buffer, [current | rest]) do
-    to_tree(tokens, [:tag_close], [add_to_tag_block(current, buffer) | rest])
+  defp build([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
+    build(tokens, [{:tag_block, name, attrs, Enum.reverse(buffer)} | upper_buffer], stack)
   end
 
-  # Helpers
-
-  defp build_tag_block({:tag_open, name, attrs, meta}) do
-    {:tag_block, name, attrs, meta, []}
+  defp build([{:eex_tag, "else", _meta} | tokens], buffer, [{expr, upper_buffer} | stack]) do
+    build(tokens, [], [{expr, {Enum.reverse(buffer), "else"}, upper_buffer} | stack])
   end
 
-  defp add_to_children({:tag_block, name, attrs, meta, children}, tag_block) do
-    {:tag_block, name, attrs, meta, [tag_block | children]}
+  defp build([{:eex_tag, "end", _meta} | tokens], buffer, [{expr, upper_buffer} | stack]) do
+    build(tokens, [{:eex_block, expr, [{Enum.reverse(buffer), "end"}]} | upper_buffer], stack)
   end
 
-  defp add_to_tag_block({:tag_block, name, attrs, meta, _children}, buffer) do
-    {:tag_block, name, attrs, meta, Enum.reverse(buffer)}
+  defp build([{:eex_tag, "end", _meta} | tokens], buffer, [
+         {expr, else_buffer, upper_buffer} | stack
+       ]) do
+    buffer = [{:eex_block, expr, [else_buffer, {Enum.reverse(buffer), "end"}]} | upper_buffer]
+    build(tokens, buffer, stack)
   end
 
-  defp tag_block?({:tag_block, _name, _attrs, _meta, _children}), do: true
-  defp tag_block?(_token), do: false
+  defp build([{:eex_tag, expr, %{block?: true}} | tokens], buffer, stack) do
+    build(tokens, [], [{expr, buffer} | stack])
+  end
+
+  defp build([{:eex_tag, expr, %{block?: false}} | tokens], buffer, stack) do
+    build(tokens, [{:eex_tag, expr} | buffer], stack)
+  end
 end

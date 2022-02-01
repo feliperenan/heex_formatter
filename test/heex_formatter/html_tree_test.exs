@@ -20,34 +20,22 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:text, "Text only\n", %{column_end: 1, line_end: 2}},
-             {:tag_block, "p", [], %{column: 1, line: 2},
+             {:text, "Text only\n"},
+             {:tag_block, "p", [], [text: "some text"]},
+             {:tag_block, "section", [],
               [
-                {:text, "some text", %{column_end: 13, line_end: 2}}
-              ]},
-             {
-               :tag_block,
-               "section",
-               [],
-               %{column: 1, line: 3},
-               [
-                 {:tag_block, "div", [], %{column: 1, line: 4}, []},
-                 {:tag_block, "h1", [], %{column: 1, line: 5},
-                  [
-                    {:text, "Hello", %{column_end: 10, line_end: 5}}
-                  ]}
-               ]
-             },
-             {:tag_block, "h2", [], %{column: 1, line: 6},
-              [
-                {:text, "Word", %{column_end: 9, line_end: 6}}
+                {:tag_block, "div", [],
+                 [
+                   {:tag_block, "h1", [], [text: "Hello"]},
+                   {:tag_block, "h2", [], [text: "Word"]}
+                 ]}
               ]}
            ] = HtmlTree.build(tokens)
   end
 
   test "handle self close tags" do
     contents = """
-    <h1>title</p>
+    <h1>title</h1>
     <section>
       <div />
       <p>Hello</p>
@@ -57,17 +45,11 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:tag_block, "h1", [], %{column: 1, line: 1},
+             {:tag_block, "h1", [], [text: "title"]},
+             {:tag_block, "section", [],
               [
-                {:text, "title", %{column_end: 10, line_end: 1}}
-              ]},
-             {:tag_block, "section", [], %{column: 1, line: 2},
-              [
-                {:tag_block, "div", [], %{column: 3, line: 3, self_close: true}, []},
-                {:tag_block, "p", [], %{column: 3, line: 4},
-                 [
-                   {:text, "Hello", %{column_end: 11, line_end: 4}}
-                 ]}
+                {:tag, "div", []},
+                {:tag_block, "p", [], [text: "Hello"]}
               ]}
            ] = HtmlTree.build(tokens)
   end
@@ -82,33 +64,59 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:tag_block, "section", [], %{column: 1, line: 1},
+             {:tag_block, "section", [],
               [
-                {:tag_block, "p", [], %{column: 3, line: 2},
+                {:tag_block, "p", [],
                  [
-                   {:eex_tag, "=", "@user.name", %{block?: false, column: 6, line: 1}}
+                   {:eex_tag, "= @user.name"}
                  ]}
               ]}
            ] = HtmlTree.build(tokens)
   end
 
-  test "handle eex if/else expressions" do
+  test "handle eex if without else" do
     contents = """
-    <section>
-      <p><%= @user.name %></p>
-    </section>
+    <%= if true do %>
+      <p>test</p>
+      <%= "Hello" %>
+    <% end %>
     """
 
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:tag_block, "section", [], %{column: 1, line: 1},
-              [
-                {:tag_block, "p", [], %{column: 3, line: 2},
-                 [
-                   {:eex_tag, "=", "@user.name", %{block?: false, column: 6, line: 1}}
-                 ]}
-              ]}
+             {
+               :eex_block,
+               "= if true do",
+               [
+                 {[{:tag_block, "p", [], [text: "test"]}, {:eex_tag, "= \"Hello\""}], "end"}
+               ]
+             }
+           ] = HtmlTree.build(tokens)
+  end
+
+  test "handle eex if/else expressions" do
+    contents = """
+    <%= if true do %>
+      <p>test</p>
+      <%= "Hello" %>
+    <% else %>
+      <p>error</p>
+      <%= "World" %>
+    <% end %>
+    """
+
+    tokens = Tokenizer.tokenize(contents)
+
+    assert [
+             {
+               :eex_block,
+               "= if true do",
+               [
+                 {[{:tag_block, "p", [], [text: "test"]}, {:eex_tag, "= \"Hello\""}], "else"},
+                 {[{:tag_block, "p", [], [text: "error"]}, {:eex_tag, "= \"World\""}], "end"}
+               ]
+             }
            ] = HtmlTree.build(tokens)
   end
 end
