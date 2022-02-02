@@ -85,13 +85,10 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {
-               :eex_block,
-               "= if true do",
-               [
-                 {[{:tag_block, "p", [], [text: "test"]}, {:eex_tag, "= \"Hello\""}], "end"}
-               ]
-             }
+             {:eex_block, "= if true do",
+              [
+                {[{:tag_block, "p", [], [{:text, "test"}]}, {"= \"Hello\""}], "end"}
+              ]}
            ] = HtmlTree.build(tokens)
   end
 
@@ -109,16 +106,35 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:eex_block, "= if true do",
+             {
+               :eex_block,
+               "= if true do",
+               [
+                 {[{:tag_block, "p", [], [text: "test"]}, {"= \"Hello\""}], "else"},
+                 {[{:tag_block, "p", [], [text: "error"]}, {"= \"World\""}], "end"}
+               ]
+             }
+           ] = HtmlTree.build(tokens)
+  end
+
+  test "handle case expressions" do
+    contents = """
+    <%= case term do %>
+      <% {:ok, text} -> %>
+        <%= text %>
+      <% {:error, error} -> %>
+        <%= error %>
+    <% end %>
+    """
+
+    tokens = Tokenizer.tokenize(contents)
+
+    assert [
+             {:eex_block, "= case term do",
               [
-                {[
-                   {:tag_block, "p", [], [text: "test"]},
-                   {"= \"Hello\"", [{:tag_block, "p", [], [text: "test"]}]}
-                 ], "else"},
-                {[
-                   {:tag_block, "p", [], [text: "error"]},
-                   {"= \"World\"", [{:tag_block, "p", [], [text: "error"]}]}
-                 ], "end"}
+                {[], "{:ok, text} ->"},
+                {[{"= text"}], "{:error, error} ->"},
+                {[{"= error"}], "end"}
               ]}
            ] = HtmlTree.build(tokens)
   end

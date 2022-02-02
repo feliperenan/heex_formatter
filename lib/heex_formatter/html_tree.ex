@@ -5,6 +5,7 @@ defmodule HeexFormatter.HtmlTree do
   Build an HTML Tree givens tokens from `Tokenizer.tokenize/1`
   """
   def build(tokens) do
+    IO.inspect(tokens)
     build(tokens, [], [])
   end
 
@@ -38,22 +39,34 @@ defmodule HeexFormatter.HtmlTree do
     build(tokens, [], [{expr, buffer} | stack])
   end
 
-  defp build([{:eex_tag, :middle_expr, keyword, _meta} | tokens], buffer, [
-         {expr, upper_buffer} | stack
+  defp build([{:eex_tag, :middle_expr, middle_expr, _meta} | tokens], buffer, [
+         {expr, upper_buffer, middle_buffer} | stack
        ]) do
-    build(tokens, [], [{expr, upper_buffer, {Enum.reverse(buffer), keyword}} | stack])
+    middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
+    build(tokens, [], [{expr, upper_buffer, middle_buffer} | stack])
   end
 
-  defp build(
-         [{:eex_tag, :end_expr, keyword, _meta} | tokens],
-         buffer,
-         [{expr, upper_buffer, middle_buffer} | stack]
-       ) do
-    eex_block = {:eex_block, expr, [middle_buffer, {Enum.reverse(buffer), keyword}]}
-    build(tokens, [eex_block | upper_buffer], stack)
+  defp build([{:eex_tag, :middle_expr, middle_expr, _meta} | tokens], buffer, [
+         {expr, upper_buffer} | stack
+       ]) do
+    build(tokens, [], [{expr, upper_buffer, [{Enum.reverse(buffer), middle_expr}]} | stack])
+  end
+
+  defp build([{:eex_tag, :end_expr, end_expr, _meta} | tokens], buffer, [
+         {expr, upper_buffer, middle_buffer} | stack
+       ]) do
+    block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
+    build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
+  end
+
+  defp build([{:eex_tag, :end_expr, end_expr, _meta} | tokens], buffer, [
+         {expr, upper_buffer} | stack
+       ]) do
+    block = [{Enum.reverse(buffer), end_expr}]
+    build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
   defp build([{:eex_tag, _type, expr, _meta} | tokens], buffer, stack) do
-    build(tokens, [{expr, buffer} | buffer], stack)
+    build(tokens, [{expr} | buffer], stack)
   end
 end
