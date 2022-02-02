@@ -138,4 +138,29 @@ defmodule HeexFormatter.HtmlTreeTest do
               ]}
            ] = HtmlTree.build(tokens)
   end
+
+  test "handle cond statement" do
+    contents = """
+    <%= cond do %>
+      <% foo? -> %>
+        <p>foo</p>
+      <% bar? -> %>
+        <p>bar</p>
+      <% true -> %>
+        <p>baz</p>
+    <% end %>
+    """
+
+    tokens = Tokenizer.tokenize(contents)
+
+    assert [
+             {:eex_block, "= cond do",
+              [
+                {[], "foo? ->"},
+                {[{:tag_block, "p", [], [{:text, "foo"}]}], "bar? ->"},
+                {[{:tag_block, "p", [], [{:text, "bar"}]}], "true ->"},
+                {[{:tag_block, "p", [], [{:text, "baz"}]}], "end"}
+              ]}
+           ] = HtmlTree.build(tokens)
+  end
 end

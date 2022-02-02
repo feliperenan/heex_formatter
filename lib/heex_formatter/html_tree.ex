@@ -5,7 +5,6 @@ defmodule HeexFormatter.HtmlTree do
   Build an HTML Tree givens tokens from `Tokenizer.tokenize/1`
   """
   def build(tokens) do
-    IO.inspect(tokens)
     build(tokens, [], [])
   end
 
