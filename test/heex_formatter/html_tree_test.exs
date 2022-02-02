@@ -109,14 +109,17 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {
-               :eex_block,
-               "= if true do",
-               [
-                 {[{:tag_block, "p", [], [text: "test"]}, {:eex_tag, "= \"Hello\""}], "else"},
-                 {[{:tag_block, "p", [], [text: "error"]}, {:eex_tag, "= \"World\""}], "end"}
-               ]
-             }
+             {:eex_block, "= if true do",
+              [
+                {[
+                   {:tag_block, "p", [], [text: "test"]},
+                   {"= \"Hello\"", [{:tag_block, "p", [], [text: "test"]}]}
+                 ], "else"},
+                {[
+                   {:tag_block, "p", [], [text: "error"]},
+                   {"= \"World\"", [{:tag_block, "p", [], [text: "error"]}]}
+                 ], "end"}
+              ]}
            ] = HtmlTree.build(tokens)
   end
 end

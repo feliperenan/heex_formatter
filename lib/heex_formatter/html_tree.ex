@@ -34,26 +34,26 @@ defmodule HeexFormatter.HtmlTree do
     build(tokens, [{:tag_block, name, attrs, Enum.reverse(buffer)} | upper_buffer], stack)
   end
 
-  defp build([{:eex_tag, "else", _meta} | tokens], buffer, [{expr, upper_buffer} | stack]) do
-    build(tokens, [], [{expr, {Enum.reverse(buffer), "else"}, upper_buffer} | stack])
-  end
-
-  defp build([{:eex_tag, "end", _meta} | tokens], buffer, [{expr, upper_buffer} | stack]) do
-    build(tokens, [{:eex_block, expr, [{Enum.reverse(buffer), "end"}]} | upper_buffer], stack)
-  end
-
-  defp build([{:eex_tag, "end", _meta} | tokens], buffer, [
-         {expr, else_buffer, upper_buffer} | stack
-       ]) do
-    buffer = [{:eex_block, expr, [else_buffer, {Enum.reverse(buffer), "end"}]} | upper_buffer]
-    build(tokens, buffer, stack)
-  end
-
-  defp build([{:eex_tag, expr, %{block?: true}} | tokens], buffer, stack) do
+  defp build([{:eex_tag, :start_expr, expr, _meta} | tokens], buffer, stack) do
     build(tokens, [], [{expr, buffer} | stack])
   end
 
-  defp build([{:eex_tag, expr, %{block?: false}} | tokens], buffer, stack) do
-    build(tokens, [{:eex_tag, expr} | buffer], stack)
+  defp build([{:eex_tag, :middle_expr, keyword, _meta} | tokens], buffer, [
+         {expr, upper_buffer} | stack
+       ]) do
+    build(tokens, [], [{expr, upper_buffer, {Enum.reverse(buffer), keyword}} | stack])
+  end
+
+  defp build(
+         [{:eex_tag, :end_expr, keyword, _meta} | tokens],
+         buffer,
+         [{expr, upper_buffer, middle_buffer} | stack]
+       ) do
+    eex_block = {:eex_block, expr, [middle_buffer, {Enum.reverse(buffer), keyword}]}
+    build(tokens, [eex_block | upper_buffer], stack)
+  end
+
+  defp build([{:eex_tag, _type, expr, _meta} | tokens], buffer, stack) do
+    build(tokens, [{expr, buffer} | buffer], stack)
   end
 end
