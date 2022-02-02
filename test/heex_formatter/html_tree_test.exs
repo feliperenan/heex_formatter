@@ -68,13 +68,13 @@ defmodule HeexFormatter.HtmlTreeTest do
               [
                 {:tag_block, "p", [],
                  [
-                   {:eex_tag, "= @user.name"}
+                   {"= @user.name"}
                  ]}
               ]}
            ] = HtmlTree.build(tokens)
   end
 
-  test "handle eex if without else" do
+  test "handle if without else" do
     contents = """
     <%= if true do %>
       <p>test</p>

@@ -34,6 +34,8 @@ defmodule HeexFormatter.HtmlTree do
     build(tokens, [{:tag_block, name, attrs, Enum.reverse(buffer)} | upper_buffer], stack)
   end
 
+  # handle eex
+
   defp build([{:eex, :start_expr, expr} | tokens], buffer, stack) do
     build(tokens, [], [{expr, buffer} | stack])
   end
