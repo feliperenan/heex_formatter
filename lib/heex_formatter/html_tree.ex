@@ -13,13 +13,7 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   defp build([{:text, text, _meta} | tokens], buffer, stack) do
-    # TODO: we might want to handle this in the tokenizer.
-    # Ignore when it is either a new_line and/or empty spaces.
-    if String.trim(text) == "" do
-      build(tokens, buffer, stack)
-    else
-      build(tokens, [{:text, String.trim(text)} | buffer], stack)
-    end
+    build(tokens, [{:text, text} | buffer], stack)
   end
 
   defp build([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do
