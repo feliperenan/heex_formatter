@@ -18,7 +18,7 @@ defmodule HeexFormatter.HtmlTree do
     if String.trim(text) == "" do
       build(tokens, buffer, stack)
     else
-      build(tokens, [{:text, text} | buffer], stack)
+      build(tokens, [{:text, String.trim(text)} | buffer], stack)
     end
   end
 
@@ -37,33 +37,38 @@ defmodule HeexFormatter.HtmlTree do
   # handle eex
 
   defp build([{:eex, :start_expr, expr} | tokens], buffer, stack) do
-    build(tokens, [], [{expr, buffer} | stack])
+    build(tokens, [], [{:eex_block, expr, buffer} | stack])
   end
 
   defp build([{:eex, :middle_expr, middle_expr} | tokens], buffer, [
-         {expr, upper_buffer, middle_buffer} | stack
+         {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
-    build(tokens, [], [{expr, upper_buffer, middle_buffer} | stack])
+    build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
-  defp build([{:eex, :middle_expr, middle_expr} | tokens], buffer, [{expr, upper_buffer} | stack]) do
-    build(tokens, [], [{expr, upper_buffer, [{Enum.reverse(buffer), middle_expr}]} | stack])
+  defp build([{:eex, :middle_expr, middle_expr} | tokens], buffer, [
+         {:eex_block, expr, upper_buffer} | stack
+       ]) do
+    middle_buffer = [{Enum.reverse(buffer), middle_expr}]
+    build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
   defp build([{:eex, :end_expr, end_expr} | tokens], buffer, [
-         {expr, upper_buffer, middle_buffer} | stack
+         {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
-  defp build([{:eex, :end_expr, end_expr} | tokens], buffer, [{expr, upper_buffer} | stack]) do
+  defp build([{:eex, :end_expr, end_expr} | tokens], buffer, [
+         {:eex_block, expr, upper_buffer} | stack
+       ]) do
     block = [{Enum.reverse(buffer), end_expr}]
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
   defp build([{:eex, _type, expr} | tokens], buffer, stack) do
-    build(tokens, [{expr} | buffer], stack)
+    build(tokens, [expr | buffer], stack)
   end
 end

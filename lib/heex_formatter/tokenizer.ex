@@ -29,9 +29,6 @@ defmodule HeexFormatter.Tokenizer do
     {:text, "\n", %{column_end: 1, line_end: 2}},
     {:tag_close, "section", %{column: 1, line: 2}}
   ]
-
-  Notice that it adds custom identifiers to eex expressions such as `eex_tag_render` and
-  `eex_tag` as well as `block?` metadata to identify if that is either a block or not.
   """
   def tokenize(contents) do
     {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 0, 0, %{indentation: 0, trim: false})
