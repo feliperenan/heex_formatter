@@ -50,41 +50,55 @@ defmodule HeexFormatter do
   Given a plain HTML like this:
 
   ```eex
-    <section>
-    <h1>    Hello</h1>
-    </section>
+    <section><h1>   <b>Hello</b></h1> </section>
   ```
 
   Will be formatted as:
 
   ```eex
   <section>
-    <h1>Hello</h1>
+    <h1><b><%= @user.name %></b></h1>
   </section>
   ```
 
-  It will break texts to the next line in case there a tag has attributes:
+  As you can see above, a block element will go to the next line while inline
+  elements will be kept in the current line as long as it fits in the configured
+  line length. In the link below you can see all block and inline elements.
 
-  ```eex
-  <section>
-    <h1 class="my-class">
-      Hello
-    </h1>
-  </section>
-  ```
+  https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements#elements
+  https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
 
-  And when it is a eex expression:
+  It keeps inline elements in the next line in case you write it this way:
 
   ```eex
   <section>
     <h1>
-      <%= Hello %>
+      <b><%= @user.name %></b>
     </h1>
   </section>
   ```
 
-  Speaking of ieex expressions. Since they are Elixir code, they are formatted
-  by Elixir formatter. We just make sure it is well indentend within tags.
+  This formatter will break tags to the next line in case the tag attributes does
+  not fit in the current line. Therefore this:
+
+  ```eex
+  <section id="user-section-id" class="sm:focus:block flex w-full p-3" phx-click="send-event">
+    <p>Hi</p>
+  </seciton>
+  ```
+
+  Will be formatted to:
+
+  ```eex
+  <section
+    id="user-section-id"
+    class="sm:focus:block flex w-full p-3"
+    phx-click="send-event">
+    <p>Hi</p>
+  </seciton>
+  ```
+
+  It should expect the same behaviour for eex expressions:
 
   ```eex
   <secion>
@@ -98,8 +112,8 @@ defmodule HeexFormatter do
   </section>
   ```
 
-  It will keep intentional new lines. In fact, the formatter will always keep
-  one line in case you have inserted multiple ones:
+  The formatter will keep intentional new lines. In fact, the formatter will
+  always keep one line in case you have inserted multiple ones:
 
   ```eex
   <section>
@@ -126,7 +140,7 @@ defmodule HeexFormatter do
   """
   @behaviour Mix.Tasks.Format
 
-  alias HeexFormatter.{Formatter, Tokenizer}
+  alias HeexFormatter.{Formatter, Tokenizer, HtmlTree}
 
   @impl Mix.Tasks.Format
   def features(_opts) do
@@ -137,6 +151,7 @@ defmodule HeexFormatter do
   def format(contents, opts) do
     contents
     |> Tokenizer.tokenize()
+    |> HtmlTree.build()
     |> Formatter.format(opts)
   end
 end
