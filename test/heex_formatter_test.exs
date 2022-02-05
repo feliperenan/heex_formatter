@@ -65,18 +65,6 @@ defmodule HeexFormatterTest do
     expected = """
     <section>
       <h1>
-        <b><%= @user.name %></b>
-      </h1>
-    </section>
-    """
-
-    assert_formatter_output(input, expected, line_length: 30)
-  end
-
-  test "doesn't put inline elements in the current line" do
-    input = """
-    <section>
-      <h1>
         <b>
           <%= @user.name %>
         </b>
@@ -84,32 +72,43 @@ defmodule HeexFormatterTest do
     </section>
     """
 
+    assert_formatter_output(input, expected, line_length: 20)
+  end
+
+  test "always break line for block elements" do
+    input = """
+    <h1>1</h1>
+    <h2>2</h2>
+    <h3>3</h3>
+    """
+
     assert_formatter_doesnt_change(input)
   end
 
-  # test "remove unwanted empty lines" do
-  #   assert_formatter_output(
-  #     """
-  #     <section>
-  #     <div>
-  #     <h1>    Hello</h1>
-  #     <h2>
-  #     Sub title
-  #     </h2>
-  #     </div>
-  #     </section>
+  test "remove unwanted empty lines" do
+    input = """
+    <section>
+    <div>
+    <h1>    Hello</h1>
+    <h2>
+    Sub title
+    </h2>
+    </div>
+    </section>
 
-  #     """,
-  #     """
-  #     <section>
-  #       <div>
-  #         <h1>Hello</h1>
-  #         <h2>Sub title</h2>
-  #       </div>
-  #     </section>
-  #     """
-  #   )
-  # end
+    """
+
+    expected = """
+    <section>
+      <div>
+        <h1>Hello</h1>
+        <h2>Sub title</h2>
+      </div>
+    </section>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 
   # test "add indentation when there aren't any" do
   #   assert_formatter_output(

@@ -13,7 +13,13 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   defp build([{:text, text, _meta} | tokens], buffer, stack) do
-    build(tokens, [{:text, text} | buffer], stack)
+    trimmed_text = String.trim(text)
+
+    if trimmed_text == "" do
+      build(tokens, buffer, stack)
+    else
+      build(tokens, [{:text, trimmed_text} | buffer], stack)
+    end
   end
 
   defp build([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do

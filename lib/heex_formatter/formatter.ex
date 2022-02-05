@@ -40,32 +40,32 @@ defmodule HeexFormatter.Formatter do
       ""
   """
   def format(tree, opts) do
-    IO.inspect(tree)
-
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
     formatted =
       tree
       |> block_to_algebra(opts)
+      |> group()
       |> Inspect.Algebra.format(line_length)
 
     [formatted, ?\n]
   end
 
-  def block_to_algebra(tree, opts) do
-    Enum.reduce(tree, empty(), &concat(to_algebra(&1, opts), &2))
+  defp block_to_algebra([], _opts), do: empty()
+
+  defp block_to_algebra([head | tail], opts) do
+    Enum.reduce(
+      tail,
+      to_algebra(head, opts),
+      &concat([&2, break(""), to_algebra(&1, opts)])
+    )
   end
 
   defp to_algebra({:tag_block, name, _attrs, block}, opts) do
     document = block_to_algebra(block, opts)
 
     group =
-      [
-        "<#{name}>",
-        nest(concat(break(""), document), 2),
-        break(""),
-        "</#{name}>"
-      ]
+      ["<#{name}>", nest(concat(break(""), document), 2), concat(break(""), "</#{name}>")]
       |> concat()
       |> group()
 
@@ -77,31 +77,11 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp to_algebra({:text, text}, _opts) when is_binary(text) do
-    if only_spaces?(text) do
-      ensure_only_one_line_break(text)
-    else
-      text
-    end
+    text
   end
 
   # TODO: make it a tuple `{:eex, text}`
   defp to_algebra(text, _opts) when is_binary(text) do
     "<%#{text} %>"
-  end
-
-  defp only_spaces?(string) do
-    string
-    |> String.to_charlist()
-    |> Enum.all?(&(&1 in [?\s, ?\t, ?\r, ?\n]))
-  end
-
-  defp ensure_only_one_line_break(text) do
-    case Regex.run(~r/\n/, text) do
-      ["\n"] ->
-        line()
-
-      " " ->
-        ""
-    end
   end
 end
