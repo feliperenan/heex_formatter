@@ -54,11 +54,16 @@ defmodule HeexFormatter.Formatter do
   defp block_to_algebra([], _opts), do: empty()
 
   defp block_to_algebra([head | tail], opts) do
-    Enum.reduce(
-      tail,
-      to_algebra(head, opts),
-      &concat([&2, break(""), to_algebra(&1, opts)])
-    )
+    tail
+    |> Enum.reduce(to_algebra(head, opts), fn node, {prev_type, prev_doc} ->
+      {next_type, next_doc} = to_algebra(node, opts)
+
+      break =
+        if prev_type == :inline and next_type == :inline, do: flex_break(""), else: break("")
+
+      {next_type, concat([prev_doc, break, next_doc])}
+    end)
+    |> elem(1)
   end
 
   defp to_algebra({:tag_block, name, _attrs, block}, opts) do
@@ -70,18 +75,18 @@ defmodule HeexFormatter.Formatter do
       |> group()
 
     if name in @inline_elements do
-      group
+      {:inline, group}
     else
-      force_unfit(group)
+      {:block, force_unfit(group)}
     end
   end
 
   defp to_algebra({:text, text}, _opts) when is_binary(text) do
-    text
+    {:inline, text}
   end
 
   # TODO: make it a tuple `{:eex, text}`
   defp to_algebra(text, _opts) when is_binary(text) do
-    "<%#{text} %>"
+    {:inline, "<%#{text} %>"}
   end
 end

@@ -110,6 +110,33 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
+  test "texts with inline elements and block elements" do
+    input = """
+    <div>
+      Long long long loooooooooooong text: <i>...</i>.
+      <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+      </ul>
+      Texto
+    </div>
+    """
+
+    expected = """
+    <div>
+      Long long long loooooooooooong text:
+      <i>...</i>.
+      <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+      </ul>
+      Texto
+    </div>
+    """
+
+    assert_formatter_output(input, expected, line_length: 20)
+  end
+
   # test "add indentation when there aren't any" do
   #   assert_formatter_output(
   #     """
