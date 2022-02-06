@@ -66,11 +66,12 @@ defmodule HeexFormatter.Formatter do
     |> elem(1)
   end
 
-  defp to_algebra({:tag_block, name, _attrs, block}, opts) do
+  defp to_algebra({:tag_block, name, attrs, block}, opts) do
     document = block_to_algebra(block, opts)
+    tag_open = build_tag_open(name, attrs)
 
     group =
-      ["<#{name}>", nest(concat(break(""), document), 2), concat(break(""), "</#{name}>")]
+      [tag_open, nest(concat(break(""), document), 2), concat(break(""), "</#{name}>")]
       |> concat()
       |> group()
 
@@ -89,4 +90,24 @@ defmodule HeexFormatter.Formatter do
   defp to_algebra(text, _opts) when is_binary(text) do
     {:inline, "<%#{text} %>"}
   end
+
+  defp build_tag_open(tag_name, []), do: "<#{tag_name}>"
+
+  defp build_tag_open(tag_name, attrs) do
+    attrs
+    |> Enum.reduce("<#{tag_name}", &attrs_to_algebra/2)
+    |> concat(">")
+    |> nest(1)
+    |> group()
+  end
+
+  defp attrs_to_algebra(attr, doc) do
+    concat([concat(doc, break("")), " ", render_attribute(attr)])
+  end
+
+  defp render_attribute({:root, {:expr, expr, _}}), do: ~s({#{expr}})
+  defp render_attribute({attr, {:string, value, _meta}}), do: ~s(#{attr}="#{value}")
+  defp render_attribute({attr, {:expr, value, _meta}}), do: ~s(#{attr}={#{value}})
+  defp render_attribute({attr, {_, value, _meta}}), do: ~s(#{attr}=#{value})
+  defp render_attribute({attr, nil}), do: ~s(#{attr})
 end

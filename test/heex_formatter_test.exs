@@ -137,6 +137,36 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected, line_length: 20)
   end
 
+  test "handle HTML attributes" do
+    input = """
+    <p class="alert alert-info" phx-click="lv:clear-flash" phx-value-key="info">
+      <%= live_flash(@flash, :info) %>
+    </p>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
+
+  test "break HTML into multiple lines when it doesn't fit" do
+    input = """
+    <p class="alert alert-info more-class more-class" role="alert" phx-click="lv:clear-flash" phx-value-key="info">
+      <%= live_flash(@flash, :info) %>
+    </p>
+    """
+
+    expected = """
+    <p
+      class="alert alert-info more-class more-class"
+      role="alert"
+      phx-click="lv:clear-flash"
+      phx-value-key="info">
+      <%= live_flash(@flash, :info) %>
+    </p>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
   # test "add indentation when there aren't any" do
   #   assert_formatter_output(
   #     """
