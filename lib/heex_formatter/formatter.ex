@@ -39,7 +39,7 @@ defmodule HeexFormatter.Formatter do
       iex> HeexFormatter.format(tree, [])
       ""
   """
-  def format(tree, opts) do
+  def format(tree, opts) when is_list(tree) do
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
     formatted =
@@ -68,12 +68,11 @@ defmodule HeexFormatter.Formatter do
 
   defp to_algebra({:tag_block, name, attrs, block}, opts) do
     document = block_to_algebra(block, opts)
-    attrs = build_attrs(attrs)
 
     group =
       concat([
         "<#{name}",
-        attrs,
+        build_attrs(attrs),
         ">",
         nest(concat(break(""), document), 2),
         break(""),
@@ -91,10 +90,8 @@ defmodule HeexFormatter.Formatter do
   # TODO: maybe call it {:self_close_tag, .., ...} to be more explicit? and
   # handle inline elements.
   defp to_algebra({:tag, name, attrs}, _opts) do
-    attrs = build_attrs(attrs)
-
     doc =
-      concat(["<#{name}", attrs, " />"])
+      concat(["<#{name}", build_attrs(attrs), " />"])
       |> group()
       |> force_unfit()
 
@@ -119,8 +116,21 @@ defmodule HeexFormatter.Formatter do
     {:block, doc}
   end
 
-  defp to_algebra({:eex, text, %{opt: opt}}, _opts) do
-    {:inline, "<%#{opt} #{text} %>"}
+  defp to_algebra({:eex, text, %{opt: opt, column: column, line: line}}, opts) do
+    string_to_quoted_opts = [
+      literal_encoder: &{:ok, {:__block__, &2, [&1]}},
+      token_metadata: true,
+      unescape: false,
+      line: line,
+      column: column
+    ]
+
+    doc =
+      text
+      |> Code.string_to_quoted!(string_to_quoted_opts)
+      |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
+
+    {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
   defp to_algebra({:text, text}, _opts) when is_binary(text) do

@@ -365,232 +365,302 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  # test "format tags with attributes without value" do
-  #   assert_formatter_output(
-  #     """
+  test "does not add newline after DOCTYPE" do
+    input = """
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+      </head>
+      <body><%= @inner_content %></body>
+    </html>
+    """
 
-  #       <button class="btn-primary" autofocus disabled> Submit </button>
+    assert_formatter_doesnt_change(input)
+  end
 
-  #     """,
-  #     """
-  #     <button class="btn-primary" autofocus disabled>
-  #       Submit
-  #     </button>
-  #     """
-  #   )
-  # end
+  test "format tags with attributes without value" do
+    assert_formatter_output(
+      """
 
-  # test "keep tags with text and eex expressions inline" do
-  #   assert_formatter_output(
-  #     """
-  #       <p>
-  #         $
-  #         <%= @product.value %> in Dollars
-  #       </p>
+        <button class="btn-primary" autofocus disabled> Submit </button>
 
-  #       <button>
-  #         Submit
-  #       </button>
-  #     """,
-  #     """
-  #     <p>$ <%= @product.value %> in Dollars</p>
+      """,
+      """
+      <button class="btn-primary" autofocus disabled>Submit</button>
+      """
+    )
+  end
 
-  #     <button>Submit</button>
-  #     """
-  #   )
-  # end
+  test "keep tags with text and eex expressions inline" do
+    assert_formatter_output(
+      """
+        <p>
+          $
+          <%= @product.value %> in Dollars
+        </p>
 
-  # test "parse eex inside of html tags" do
-  #   assert_formatter_output(
-  #     """
-  #       <button {build_phx_attrs_dynamically()}>Test</button>
-  #     """,
-  #     """
-  #     <button {build_phx_attrs_dynamically()}>
-  #       Test
-  #     </button>
-  #     """
-  #   )
-  # end
+        <button>
+          Submit
+        </button>
+      """,
+      """
+      <p>$<%= @product.value %>in Dollars</p>
+      <button>Submit</button>
+      """
+    )
+  end
 
-  # test "format long lines to be split into multiple lines" do
-  #   assert_formatter_output(
-  #     """
-  #       <p><span>this is a long long long long long looooooong text</span><%= @product.value %> and more stuff over here</p>
-  #     """,
-  #     """
-  #     <p>
-  #       <span>this is a long long long long long looooooong text</span>
-  #       <%= @product.value %> and more stuff over here
-  #     </p>
-  #     """
-  #   )
-  # end
+  test "parse eex inside of html tags" do
+    assert_formatter_output(
+      """
+        <button {build_phx_attrs_dynamically()}>Test</button>
+      """,
+      """
+      <button {build_phx_attrs_dynamically()}>Test</button>
+      """
+    )
+  end
 
-  #   assert_formatter_output(input, expected)
-  # end
+  test "format long lines splitting into multiple lines" do
+    assert_formatter_output(
+      """
+        <p><span>this is a long long long long long looooooong text</span><%= @product.value %> and more stuff over here</p>
+      """,
+      """
+      <p>
+        <span>this is a long long long long long looooooong text</span><%= @product.value %>
+        and more stuff over here
+      </p>
+      """
+    )
+  end
 
-  # test "handle eex cond statement" do
-  #   input = """
-  #   <div>
-  #   <%= cond do %>
-  #   <% 1 == 1 -> %>
-  #   <%= "Hello" %>
-  #   <% 2 == 2 -> %>
-  #   <%= "World" %>
-  #   <% true -> %>
-  #   <%= "" %>
-  #   <% end %>
-  #   </div>
-  #   """
+  test "handle eex cond statement" do
+    input = """
+    <div>
+    <%= cond do %>
+    <% 1 == 1 -> %>
+    <%= "Hello" %>
+    <% 2 == 2 -> %>
+    <%= "World" %>
+    <% true -> %>
+    <%= "" %>
+    <% end %>
+    </div>
+    """
 
-  #   expected = """
-  #   <div>
-  #     <%= cond do %>
-  #       <% 1 == 1 -> %>
-  #         <%= "Hello" %>
-  #       <% 2 == 2 -> %>
-  #         <%= "World" %>
-  #       <% true -> %>
-  #         <%= "" %>
-  #     <% end %>
-  #   </div>
-  #   """
+    expected = """
+    <div>
+      <%= cond do %>
+        <% 1 == 1 -> %>
+          <%= "Hello" %>
+        <% 2 == 2 -> %>
+          <%= "World" %>
+        <% true -> %>
+          <%= "" %>
+      <% end %>
+    </div>
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected)
+  end
 
-  # test "handle script tags but don't touch JS code" do
-  #   input = """
-  #   <div>
-  #   <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('<%= "confirmation text" %>')) {
-  #     event.stopPropagation()
-  #   }
-  #     return false;
-  #   };
-  #   </script>
-  #   <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('foo')) { event.stopPropagation() }
-  #     return false;
-  #   };
-  #   </script>
-  #   </div>
-  #   """
+  test "proper format elixir functions" do
+    input = """
+    <div>
+    <%= live_component(MyAppWeb.Components.SearchBox, id: :search_box, on_select: :user_selected, label: gettext("Search User")) %>
+    </div>
+    """
 
-  #   expected = """
-  #   <div>
-  #     <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('<%= "confirmation text" %>')) {
-  #     event.stopPropagation()
-  #   }
-  #     return false;
-  #   };
-  #     </script>
-  #     <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('foo')) { event.stopPropagation() }
-  #     return false;
-  #   };
-  #     </script>
-  #   </div>
-  #   """
+    expected = """
+    <div>
+      <%= live_component(MyAppWeb.Components.SearchBox,
+        id: :search_box,
+        on_select: :user_selected,
+        label: gettext("Search User")
+      ) %>
+    </div>
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected)
+  end
 
-  # test "handle style tags but don't touch CSS code" do
-  #   input = """
-  #   <div>
-  #   <style>
-  #   h1 {
-  #     font-weight: 900;
-  #   }
-  #   </style>
-  #   </div>
-  #   """
+  test "does not add parentheses when tag is configured to not to" do
+    input = """
+    <%= text_input f, :name %>
+    """
 
-  #   expected = """
-  #   <div>
-  #     <style>
-  #   h1 {
-  #     font-weight: 900;
-  #   }
-  #     </style>
-  #   </div>
-  #   """
+    expected = """
+    <%= text_input f, :name %>
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected, locals_without_parens: [text_input: 2])
+  end
 
-  # test "handle pre tags but don't touch the preformatted contents" do
-  #   input = """
-  #   <div>
-  #   <pre>
-  #   break
-  #      break
-  #   </pre>
-  #   </div>
-  #   """
+  test "does not add a line break in the first line" do
+    assert_formatter_output(
+      """
+      <%= @user.name %>
+      """,
+      """
+      <%= @user.name %>
+      """
+    )
 
-  #   expected = """
-  #   <div>
-  #     <pre>
-  #   break
-  #      break
-  #     </pre>
-  #   </div>
-  #   """
+    assert_formatter_output(
+      """
+      <div />
+      """,
+      """
+      <div />
+      """
+    )
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(
+      """
+      <% "Hello" %>
+      """,
+      """
+      <% "Hello" %>
+      """
+    )
+  end
 
-  # test "handle code tags but don't touch the code inside" do
-  #   input = """
-  #   <div>
-  #   <code>
-  #   public static void main(String[] args) {
-  #     System.out.println("Moin")
-  #   }
-  #   </code>
-  #   </div>
-  #   """
+  test "use the configured line_length for breaking texts into new lines" do
+    input = """
+      <p>My title</p>
+    """
 
-  #   expected = """
-  #   <div>
-  #     <code>
-  #   public static void main(String[] args) {
-  #     System.out.println("Moin")
-  #   }
-  #     </code>
-  #   </div>
-  #   """
+    expected = """
+    <p>
+      My title
+    </p>
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected, line_length: 5)
+  end
 
-  # test "handle live_component format" do
-  #   input = """
-  #   <div>
-  #   <%= live_component(MyAppWeb.Components.SearchBox, id: :search_box, on_select: :user_selected, label: gettext("Search User")) %>
-  #   </div>
-  #   """
+  test "doesn't break lines when tag doesn't have any attrs and it fits using the configured line length" do
+    input = """
+      <p>
+      My title
+      </p>
+      <p>This is tooooooooooooooooooooooooooooooooooooooo looooooong annnnnnnnnnnnnnd should breeeeeak liines</p>
+      <p class="some-class">Should break line</p>
+      <p><%= @user.name %></p>
+      should not break when there it is not wrapped by any tags
+    """
 
-  #   expected = """
-  #   <div>
-  #     <%= live_component(MyAppWeb.Components.SearchBox,
-  #       id: :search_box,
-  #       on_select: :user_selected,
-  #       label: gettext("Search User")
-  #     ) %>
-  #   </div>
-  #   """
+    expected = """
+    <p>My title</p>
+    <p>
+      This is tooooooooooooooooooooooooooooooooooooooo looooooong annnnnnnnnnnnnnd should breeeeeak liines
+    </p>
+    <p class="some-class">Should break line</p>
+    <p><%= @user.name %></p>
+    should not break when there it is not wrapped by any tags
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected)
+  end
+
+  test "does not break lines when tag doesn't contain content" do
+    input = """
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Age</th>
+        <th></th>
+        <th>
+        </th>
+      </tr>
+    </thead>
+    """
+
+    expected = """
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Age</th>
+        <th></th>
+        <th></th>
+      </tr>
+    </thead>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle case statement within for statement" do
+    input = """
+    <tr>
+      <%= for value <- @values do %>
+        <td class="border-2">
+          <%= case value.type do %>
+          <% :text -> %>
+          Do something
+          <p>Hello</p>
+          <% _ -> %>
+          Do something else
+          <p>Hello</p>
+          <% end %>
+        </td>
+      <% end %>
+    </tr>
+    """
+
+    expected = """
+    <tr>
+      <%= for value <- @values do %>
+        <td class="border-2">
+          <%= case value.type do %>
+            <% :text -> %>
+              Do something
+              <p>Hello</p>
+            <% _ -> %>
+              Do something else
+              <p>Hello</p>
+          <% end %>
+        </td>
+      <% end %>
+    </tr>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "proper indent if when it is in the beginning of the template" do
+    input = """
+    <%= if @live_action == :edit do %>
+    <.modal return_to={Routes.store_index_path(@socket, :index)}>
+      <.live_component
+        id={@product.id}
+        module={MystoreWeb.ReserveFormComponent}
+        action={@live_action}
+        product={@product}
+        return_to={Routes.store_index_path(@socket, :index)}
+      />
+    </.modal>
+    <% end %>
+    """
+
+    expected = """
+    <%= if @live_action == :edit do %>
+      <.modal return_to={Routes.store_index_path(@socket, :index)}>
+        <.live_component
+          id={@product.id}
+          module={MystoreWeb.ReserveFormComponent}
+          action={@live_action}
+          product={@product}
+          return_to={Routes.store_index_path(@socket, :index)}
+         />
+      </.modal>
+    <% end %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 
   # test "handle eex form format" do
   #   input = """
@@ -610,154 +680,6 @@ defmodule HeexFormatterTest do
   #       <%= text_input(f, :name) %>
   #     <% end %>
   #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "does not add parentheses when tag is configured to not to" do
-  #   input = """
-  #   <%= text_input f, :name %>
-  #   """
-
-  #   expected = """
-  #   <%= text_input f, :name %>
-  #   """
-
-  #   assert_formatter_output(input, expected, locals_without_parens: [text_input: 2])
-  # end
-
-  # test "does not add a line break in the first line" do
-  #   assert_formatter_output(
-  #     """
-  #     <%= @user.name %>
-  #     """,
-  #     """
-  #     <%= @user.name %>
-  #     """
-  #   )
-
-  #   assert_formatter_output(
-  #     """
-  #     <div />
-  #     """,
-  #     """
-  #     <div />
-  #     """
-  #   )
-
-  #   assert_formatter_output(
-  #     """
-  #     <% "Hello" %>
-  #     """,
-  #     """
-  #     <% "Hello" %>
-  #     """
-  #   )
-  # end
-
-  # test "use the configured line_length for breaking texts into new lines" do
-  #   input = """
-  #     <p>My title</p>
-  #   """
-
-  #   expected = """
-  #   <p>
-  #     My title
-  #   </p>
-  #   """
-
-  #   assert_formatter_output(input, expected, line_length: 5)
-  # end
-
-  # test "doesn't break lines when tag doesn't have any attrs and it fits using the configured line length" do
-  #   input = """
-  #     <p>
-  #     My title
-  #     </p>
-  #     <p>This is tooooooooooooooooooooooooooooooooooooooo looooooong annnnnnnnnnnnnnd should breeeeeak liines</p>
-  #     <p class="some-class">Should break line</p>
-  #     <p><%= @user.name %></p>
-  #     should not break when there it is not wrapped by any tags
-  #   """
-
-  #   expected = """
-  #   <p>My title</p>
-  #   <p>
-  #     This is tooooooooooooooooooooooooooooooooooooooo looooooong annnnnnnnnnnnnnd should breeeeeak liines
-  #   </p>
-  #   <p class="some-class">
-  #     Should break line
-  #   </p>
-  #   <p>
-  #     <%= @user.name %>
-  #   </p>
-  #   should not break when there it is not wrapped by any tags
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "does not break lines when tag doesn't contain content" do
-  #   input = """
-  #   <thead>
-  #     <tr>
-  #       <th>Name</th>
-  #       <th>Age</th>
-  #       <th></th>
-  #       <th>
-  #       </th>
-  #     </tr>
-  #   </thead>
-  #   """
-
-  #   expected = """
-  #   <thead>
-  #     <tr>
-  #       <th>Name</th>
-  #       <th>Age</th>
-  #       <th></th>
-  #       <th></th>
-  #     </tr>
-  #   </thead>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "handle case statement within for statement" do
-  #   input = """
-  #   <tr>
-  #     <%= for value <- @values do %>
-  #       <td class="border-2">
-  #         <%= case value.type do %>
-  #         <% :text -> %>
-  #         Do something
-  #         <p>Hello</p>
-  #         <% _ -> %>
-  #         Do something else
-  #         <p>Hello</p>
-  #         <% end %>
-  #       </td>
-  #     <% end %>
-  #   </tr>
-  #   """
-
-  #   expected = """
-  #   <tr>
-  #     <%= for value <- @values do %>
-  #       <td class="border-2">
-  #         <%= case value.type do %>
-  #           <% :text -> %>
-  #             Do something
-  #             <p>Hello</p>
-  #           <% _ -> %>
-  #             Do something else
-  #             <p>Hello</p>
-  #         <% end %>
-  #       </td>
-  #     <% end %>
-  #   </tr>
   #   """
 
   #   assert_formatter_output(input, expected)
@@ -869,38 +791,6 @@ defmodule HeexFormatterTest do
   #   assert_formatter_output(input, expected)
   # end
 
-  # test "proper indent if when it is in the beginning of the template" do
-  #   input = """
-  #   <%= if @live_action == :edit do %>
-  #   <.modal return_to={Routes.store_index_path(@socket, :index)}>
-  #     <.live_component
-  #       id={@product.id}
-  #       module={MystoreWeb.ReserveFormComponent}
-  #       action={@live_action}
-  #       product={@product}
-  #       return_to={Routes.store_index_path(@socket, :index)}
-  #     />
-  #   </.modal>
-  #   <% end %>
-  #   """
-
-  #   expected = """
-  #   <%= if @live_action == :edit do %>
-  #     <.modal return_to={Routes.store_index_path(@socket, :index)}>
-  #       <.live_component
-  #         id={@product.id}
-  #         module={MystoreWeb.ReserveFormComponent}
-  #         action={@live_action}
-  #         product={@product}
-  #         return_to={Routes.store_index_path(@socket, :index)}
-  #       />
-  #     </.modal>
-  #   <% end %>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
   # test "handle void elements" do
   #   input = """
   #   <div>
@@ -946,19 +836,116 @@ defmodule HeexFormatterTest do
   #   assert_formatter_output(input, expected)
   # end
 
-  # test "does not add newline after DOCTYPE" do
+  #
+  # test "handle script tags but don't touch JS code" do
   #   input = """
-  #   <!DOCTYPE html>
-  #   <html lang="en">
-  #     <head>
-  #       <meta charset="utf-8" />
-  #     </head>
-  #     <body>
-  #       <%= @inner_content %>
-  #     </body>
-  #   </html>
+  #   <div>
+  #   <script>
+  #   function my_confirm(event) {
+  #     if (!confirm('<%= "confirmation text" %>')) {
+  #     event.stopPropagation()
+  #   }
+  #     return false;
+  #   };
+  #   </script>
+  #   <script>
+  #   function my_confirm(event) {
+  #     if (!confirm('foo')) { event.stopPropagation() }
+  #     return false;
+  #   };
+  #   </script>
+  #   </div>
   #   """
 
-  #   assert_formatter_doesnt_change(input)
+  #   expected = """
+  #   <div>
+  #     <script>
+  #   function my_confirm(event) {
+  #     if (!confirm('<%= "confirmation text" %>')) {
+  #     event.stopPropagation()
+  #   }
+  #     return false;
+  #   };
+  #     </script>
+  #     <script>
+  #   function my_confirm(event) {
+  #     if (!confirm('foo')) { event.stopPropagation() }
+  #     return false;
+  #   };
+  #     </script>
+  #   </div>
+  #   """
+
+  #   assert_formatter_output(input, expected)
+  # end
+  #
+  # test "handle style tags but don't touch CSS code" do
+  #   input = """
+  #   <div>
+  #   <style>
+  #   h1 {
+  #     font-weight: 900;
+  #   }
+  #   </style>
+  #   </div>
+  #   """
+
+  #   expected = """
+  #   <div>
+  #     <style>
+  #   h1 {
+  #     font-weight: 900;
+  #   }
+  #     </style>
+  #   </div>
+  #   """
+
+  #   assert_formatter_output(input, expected)
+  # end
+
+  # test "handle pre tags but don't touch the preformatted contents" do
+  #   input = """
+  #   <div>
+  #   <pre>
+  #   break
+  #      break
+  #   </pre>
+  #   </div>
+  #   """
+
+  #   expected = """
+  #   <div>
+  #     <pre>
+  #   break
+  #      break
+  #     </pre>
+  #   </div>
+  #   """
+
+  #   assert_formatter_output(input, expected)
+  # end
+
+  # test "handle code tags but don't touch the code inside" do
+  #   input = """
+  #   <div>
+  #   <code>
+  #   public static void main(String[] args) {
+  #     System.out.println("Moin")
+  #   }
+  #   </code>
+  #   </div>
+  #   """
+
+  #   expected = """
+  #   <div>
+  #     <code>
+  #   public static void main(String[] args) {
+  #     System.out.println("Moin")
+  #   }
+  #     </code>
+  #   </div>
+  #   """
+
+  #   assert_formatter_output(input, expected)
   # end
 end
