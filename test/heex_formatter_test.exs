@@ -258,9 +258,77 @@ defmodule HeexFormatterTest do
     """)
   end
 
+  test "handle if/else/end block" do
+    input = """
+    <%= if true do %>
+    <p>do something</p><p>more stuff</p>
+    <% else %>
+    <p>do something else</p><p>more stuff</p>
+    <% end %>
+    """
+
+    expected = """
+    <%= if true do %>
+      <p>do something</p>
+      <p>more stuff</p>
+    <% else %>
+      <p>do something else</p>
+      <p>more stuff</p>
+    <% end %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle if/end block" do
+    input = """
+    <%= if true do %><p>do something</p>
+    <% end %>
+    """
+
+    expected = """
+    <%= if true do %>
+      <p>do something</p>
+    <% end %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "handle case/end block" do
+    input = """
+    <div>
+    <%= case {:ok, "elixir"} do %>
+    <% {:ok, text} -> %>
+    <%= text %>
+    <p>text</p>
+    <div />
+    <% {:error, error} -> %>
+    <%= error %>
+    <p>error</p>
+    <div />
+    <% end %>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <%= case {:ok, "elixir"} do %>
+        <% {:ok, text} -> %>
+          <%= text %>
+          <p>text</p>
+          <div />
+        <% {:error, error} -> %>
+          <%= error %>
+          <p>error</p>
+          <div />
+      <% end %>
+    </div>
+    """
+  end
+
   # test "format when there are EEx tags" do
-  #   assert_formatter_output(
-  #     """
+  #   input = """
   #     <section>
   #       <%= live_redirect to: "url", id: "link", role: "button" do %>
   #         <div>     <p>content 1</p><p>content 2</p></div>
@@ -271,26 +339,28 @@ defmodule HeexFormatterTest do
   #       %></p>
   #       <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>
   #     </section>
-  #     """,
-  #     """
-  #     <section>
-  #       <%= live_redirect to: "url", id: "link", role: "button" do %>
-  #         <div>
-  #           <p>content 1</p>
-  #           <p>content 2</p>
-  #         </div>
-  #       <% end %>
-  #       <p>
-  #         <%= user.name %>
-  #       </p>
-  #       <%= if true do %>
-  #         <p>deu bom</p>
-  #       <% else %>
-  #         <p>deu ruim</p>
-  #       <% end %>
-  #     </section>
-  #     """
-  #   )
+  #   """
+
+  #   expected = """
+  #   <section>
+  #     <%= live_redirect to: "url", id: "link", role: "button" do %>
+  #       <div>
+  #         <p>content 1</p>
+  #         <p>content 2</p>
+  #       </div>
+  #     <% end %>
+  #     <p>
+  #       <%= user.name %>
+  #     </p>
+  #     <%= if true do %>
+  #       <p>deu bom</p>
+  #     <% else %>
+  #       <p>deu ruim</p>
+  #     <% end %>
+  #   </section>
+  #   """
+
+  #   assert_formatter_output(input, expected)
   # end
 
   # test "format tags with attributes without value" do
@@ -354,37 +424,6 @@ defmodule HeexFormatterTest do
   #     """
   #   )
   # end
-
-  # test "handle eex case statement" do
-  #   input = """
-  #   <div>
-  #   <%= case {:ok, "elixir"} do %>
-  #   <% {:ok, text} -> %>
-  #   <%= text %>
-  #   <p>text</p>
-  #   <div />
-  #   <% {:error, error} -> %>
-  #   <%= error %>
-  #   <p>error</p>
-  #   <div />
-  #   <% end %>
-  #   </div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <%= case {:ok, "elixir"} do %>
-  #       <% {:ok, text} -> %>
-  #         <%= text %>
-  #         <p>text</p>
-  #         <div />
-  #       <% {:error, error} -> %>
-  #         <%= error %>
-  #         <p>error</p>
-  #         <div />
-  #     <% end %>
-  #   </div>
-  #   """
 
   #   assert_formatter_output(input, expected)
   # end

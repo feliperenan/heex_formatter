@@ -40,6 +40,8 @@ defmodule HeexFormatter.Formatter do
       ""
   """
   def format(tree, opts) do
+    IO.inspect(tree)
+
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
     formatted =
@@ -85,15 +87,39 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
+  # TODO: maybe call it {:self_close_tag, .., ...} to be more explicit?
   defp to_algebra({:tag, name, attrs}, _opts) do
     tag_open = build_tag_open(name, attrs)
 
     doc =
-      concat(tag_open, " />")
+      concat([break(""), tag_open, " />"])
       |> group()
       |> force_unfit()
 
     {:block, doc}
+  end
+
+  # Handle EEX blocks
+  #
+  # {:eex_block, "= if true do", [
+  #   {[{:tag_block, "p", [], [text: "do something"]}], "else"},
+  #   {[{:tag_block, "p", [], [text: "do something else"]}], "end"}
+  # ]}
+  defp to_algebra({:eex_block, expr, block}, opts) do
+    document = block_to_algebra(block, opts)
+    {:block, concat(["<%#{expr} %>", document])}
+  end
+
+  # Handle EEx else, end and case/cond expressions.
+  #
+  # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
+  defp to_algebra({block, expr}, opts) when is_list(block) do
+    document =
+      break("")
+      |> concat(block_to_algebra(block, opts))
+      |> nest(2)
+
+    {:block, line(document, "<% #{expr} %>")}
   end
 
   defp to_algebra({:text, text}, _opts) when is_binary(text) do
