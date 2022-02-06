@@ -66,7 +66,7 @@ defmodule HeexFormatter.HtmlTreeTest do
     assert [
              {:tag_block, "section", [],
               [
-                {:tag_block, "p", [], ["= @user.name"]}
+                {:tag_block, "p", [], [{:eex, "@user.name", %{column: 6, line: 1, opt: '='}}]}
               ]}
            ] = HtmlTree.build(tokens)
   end
@@ -82,9 +82,12 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:eex_block, "= if true do",
+             {:eex_block, "if true do",
               [
-                {[{:tag_block, "p", [], [{:text, "test"}]}, "= \"Hello\""], "end"}
+                {[
+                   {:tag_block, "p", [], [{:text, "test"}]},
+                   {:eex, "\"Hello\"", %{column: 3, line: 2, opt: '='}}
+                 ], "end"}
               ]}
            ] = HtmlTree.build(tokens)
   end
@@ -105,10 +108,16 @@ defmodule HeexFormatter.HtmlTreeTest do
     assert [
              {
                :eex_block,
-               "= if true do",
+               "if true do",
                [
-                 {[{:tag_block, "p", [], [text: "test"]}, "= \"Hello\""], "else"},
-                 {[{:tag_block, "p", [], [text: "error"]}, "= \"World\""], "end"}
+                 {[
+                    {:tag_block, "p", [], [text: "test"]},
+                    {:eex, "\"Hello\"", %{column: 3, line: 2, opt: '='}}
+                  ], "else"},
+                 {[
+                    {:tag_block, "p", [], [text: "error"]},
+                    {:eex, "\"World\"", %{column: 3, line: 5, opt: '='}}
+                  ], "end"}
                ]
              }
            ] = HtmlTree.build(tokens)
@@ -127,11 +136,11 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:eex_block, "= case term do",
+             {:eex_block, "case term do",
               [
                 {[], "{:ok, text} ->"},
-                {["= text"], "{:error, error} ->"},
-                {["= error"], "end"}
+                {[{:eex, "text", %{column: 5, line: 2, opt: '='}}], "{:error, error} ->"},
+                {[{:eex, "error", %{column: 5, line: 4, opt: '='}}], "end"}
               ]}
            ] = HtmlTree.build(tokens)
   end
@@ -151,7 +160,7 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:eex_block, "= cond do",
+             {:eex_block, "cond do",
               [
                 {[], "foo? ->"},
                 {[{:tag_block, "p", [], [{:text, "foo"}]}], "bar? ->"},

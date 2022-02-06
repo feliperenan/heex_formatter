@@ -88,7 +88,8 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
-  # TODO: maybe call it {:self_close_tag, .., ...} to be more explicit?
+  # TODO: maybe call it {:self_close_tag, .., ...} to be more explicit? and
+  # handle inline elements.
   defp to_algebra({:tag, name, attrs}, _opts) do
     attrs = build_attrs(attrs)
 
@@ -102,10 +103,7 @@ defmodule HeexFormatter.Formatter do
 
   # Handle EEX blocks
   #
-  # {:eex_block, "= if true do", [
-  #   {[{:tag_block, "p", [], [text: "do something"]}], "else"},
-  #   {[{:tag_block, "p", [], [text: "do something else"]}], "end"}
-  # ]}
+  # TODO: add examples as docs.
   defp to_algebra({:eex_block, expr, block}, opts) do
     {doc, _stab} =
       Enum.reduce(block, {empty(), false}, fn node, {doc, stab?} ->
@@ -114,20 +112,19 @@ defmodule HeexFormatter.Formatter do
       end)
 
     doc =
-      concat(["<%#{expr} %>", doc])
+      concat(["<%= #{expr} %>", doc])
       |> group()
       |> force_unfit()
 
     {:block, doc}
   end
 
-  defp to_algebra({:text, text}, _opts) when is_binary(text) do
-    {:inline, text}
+  defp to_algebra({:eex, text, %{opt: opt}}, _opts) do
+    {:inline, "<%#{opt} #{text} %>"}
   end
 
-  # TODO: make it a tuple `{:eex, text}`
-  defp to_algebra(text, _opts) when is_binary(text) do
-    {:inline, "<%#{text} %>"}
+  defp to_algebra({:text, text}, _opts) when is_binary(text) do
+    {:inline, text}
   end
 
   defp build_attrs([]), do: empty()

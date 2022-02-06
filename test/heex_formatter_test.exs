@@ -331,41 +331,39 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  # test "format when there are EEx tags" do
-  #   input = """
-  #     <section>
-  #       <%= live_redirect to: "url", id: "link", role: "button" do %>
-  #         <div>     <p>content 1</p><p>content 2</p></div>
-  #       <% end %>
-  #       <p>
-  #       <%=
-  #       user.name
-  #       %></p>
-  #       <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>
-  #     </section>
-  #   """
+  test "format when there are EEx tags" do
+    input = """
+      <section>
+        <%= live_redirect to: "url", id: "link", role: "button" do %>
+          <div>     <p>content 1</p><p>content 2</p></div>
+        <% end %>
+        <p>
+        <%=
+        @user.name
+        %></p>
+        <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>
+      </section>
+    """
 
-  #   expected = """
-  #   <section>
-  #     <%= live_redirect to: "url", id: "link", role: "button" do %>
-  #       <div>
-  #         <p>content 1</p>
-  #         <p>content 2</p>
-  #       </div>
-  #     <% end %>
-  #     <p>
-  #       <%= user.name %>
-  #     </p>
-  #     <%= if true do %>
-  #       <p>deu bom</p>
-  #     <% else %>
-  #       <p>deu ruim</p>
-  #     <% end %>
-  #   </section>
-  #   """
+    expected = """
+    <section>
+      <%= live_redirect to: "url", id: "link", role: "button" do %>
+        <div>
+          <p>content 1</p>
+          <p>content 2</p>
+        </div>
+      <% end %>
+      <p><%= @user.name %></p>
+      <%= if true do %>
+        <p>deu bom</p>
+      <% else %>
+        <p>deu ruim</p>
+      <% end %>
+    </section>
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected)
+  end
 
   # test "format tags with attributes without value" do
   #   assert_formatter_output(

@@ -44,9 +44,9 @@ defmodule HeexFormatter.Tokenizer do
 
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
 
-  defp do_tokenize({type, _line, _column, opt, expr}, {tokens, cont}) when type in @eex_expr do
-    expr = [opt, expr] |> IO.iodata_to_binary() |> String.trim()
-    {[{:eex, type, expr} | tokens], cont}
+  defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
+    meta = %{opt: opt, line: line, column: column}
+    {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
   end
 
   defp do_tokenize(_node, acc) do

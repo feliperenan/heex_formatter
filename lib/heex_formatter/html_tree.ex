@@ -36,39 +36,39 @@ defmodule HeexFormatter.HtmlTree do
 
   # handle eex
 
-  defp build([{:eex, :start_expr, expr} | tokens], buffer, stack) do
+  defp build([{:eex, :start_expr, expr, _meta} | tokens], buffer, stack) do
     build(tokens, [], [{:eex_block, expr, buffer} | stack])
   end
 
-  defp build([{:eex, :middle_expr, middle_expr} | tokens], buffer, [
+  defp build([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
     build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
-  defp build([{:eex, :middle_expr, middle_expr} | tokens], buffer, [
+  defp build([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer} | stack
        ]) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr}]
     build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
-  defp build([{:eex, :end_expr, end_expr} | tokens], buffer, [
+  defp build([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
-  defp build([{:eex, :end_expr, end_expr} | tokens], buffer, [
+  defp build([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer} | stack
        ]) do
     block = [{Enum.reverse(buffer), end_expr}]
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
-  defp build([{:eex, _type, expr} | tokens], buffer, stack) do
-    build(tokens, [expr | buffer], stack)
+  defp build([{:eex, _type, expr, meta} | tokens], buffer, stack) do
+    build(tokens, [{:eex, expr, meta} | buffer], stack)
   end
 end
