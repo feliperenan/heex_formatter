@@ -137,14 +137,24 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected, line_length: 20)
   end
 
-  test "handle HTML attributes" do
+  test "add indentation when there aren't any" do
     input = """
-    <p class="alert alert-info" phx-click="lv:clear-flash" phx-value-key="info">
-      <%= live_flash(@flash, :info) %>
-    </p>
+    <section>
+    <div>
+    <h1>Hello</h1>
+    </div>
+    </section>
     """
 
-    assert_formatter_doesnt_change(input)
+    expected = """
+    <section>
+      <div>
+        <h1>Hello</h1>
+      </div>
+    </section>
+    """
+
+    assert_formatter_output(input, expected)
   end
 
   test "break HTML into multiple lines when it doesn't fit" do
@@ -167,160 +177,86 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  # test "add indentation when there aren't any" do
-  #   assert_formatter_output(
-  #     """
-  #     <section>
-  #     <div>
-  #     <h1>Hello</h1>
-  #     </div>
-  #     </section>
-  #     """,
-  #     """
-  #     <section>
-  #       <div>
-  #         <h1>Hello</h1>
-  #       </div>
-  #     </section>
-  #     """
-  #   )
-  # end
+  test "handle HTML attributes" do
+    input = """
+    <p class="alert alert-info" phx-click="lv:clear-flash" phx-value-key="info">
+      <%= live_flash(@flash, :info) %>
+    </p>
+    """
 
-  # test "fix indentation when it fits inline" do
-  #   assert_formatter_output(
-  #     """
-  #     <section id="id" phx-hook="PhxHook">
-  #       <.component
-  #         image_url={@url} />
-  #     </section>
-  #     """,
-  #     """
-  #     <section id="id" phx-hook="PhxHook">
-  #       <.component image_url={@url} />
-  #     </section>
-  #     """
-  #   )
-  # end
+    assert_formatter_doesnt_change(input)
+  end
 
-  # test "format inline HTML indentation" do
-  #   assert_formatter_output(
-  #     """
-  #     <section><div><h1>Hello</h1></div></section>
-  #     """,
-  #     """
-  #     <section>
-  #       <div>
-  #         <h1>Hello</h1>
-  #       </div>
-  #     </section>
-  #     """
-  #   )
-  # end
+  test "fix indentation when everything is inline" do
+    input = """
+    <section><div><h1>Hello</h1></div></section>
+    """
 
-  # test "attributes wrap after 98 characters by default" do
-  #   assert_formatter_doesnt_change("""
-  #   <Component foo="..........." bar="..............." baz="............" qux="..................." />
-  #   """)
+    expected = """
+    <section>
+      <div>
+        <h1>Hello</h1>
+      </div>
+    </section>
+    """
 
-  #   assert_formatter_output(
-  #     """
-  #     <Component foo="..........." bar="..............." baz="............" qux="...................." />
-  #     """,
-  #     """
-  #     <Component
-  #       foo="..........."
-  #       bar="..............."
-  #       baz="............"
-  #       qux="...................."
-  #     />
-  #     """
-  #   )
+    assert_formatter_output(input, expected)
+  end
 
-  #   assert_formatter_output(
-  #     """
-  #     <Component
-  #         foo={MyappWeb.User.FormComponent}
-  #       bar="..............."
-  #       baz="............"
-  #                 qux="...................."
-  #     />
-  #     """,
-  #     """
-  #     <Component
-  #       foo={MyappWeb.User.FormComponent}
-  #       bar="..............."
-  #       baz="............"
-  #       qux="...................."
-  #     />
-  #     """
-  #   )
+  test "fix indentation when it fits inline" do
+    input = """
+    <section id="id" phx-hook="PhxHook">
+      <.component
+        image_url={@url} />
+    </section>
+    """
 
-  #   assert_formatter_output(
-  #     """
-  #     <div foo="..........." bar="..............." baz="............" qux="...................." bla="......">
-  #       <h1>Title</h1>
-  #     </div>
-  #     """,
-  #     """
-  #     <div
-  #       foo="..........."
-  #       bar="..............."
-  #       baz="............"
-  #       qux="...................."
-  #       bla="......"
-  #     >
-  #       <h1>Title</h1>
-  #     </div>
-  #     """
-  #   )
-  # end
+    expected = """
+    <section id="id" phx-hook="PhxHook">
+      <.component image_url={@url} />
+    </section>
+    """
 
-  # test "make the line_length configurable" do
-  #   assert_formatter_doesnt_change("""
-  #   <Component foo="..........." bar="..............." baz="............" qux="..................." />
-  #   """)
+    assert_formatter_output(input, expected)
+  end
 
-  #   assert_formatter_output(
-  #     """
-  #     <Component foo="..........." bar="..............." baz="............" qux="..................." />
-  #     """,
-  #     """
-  #     <Component
-  #       foo="..........."
-  #       bar="..............."
-  #       baz="............"
-  #       qux="..................."
-  #     />
-  #     """,
-  #     line_length: 20
-  #   )
+  test "keep attributes at the same line if it fits 98 characters (default)" do
+    input = """
+    <Component foo="..........." bar="..............." baz="............" qux="..................." />
+    """
 
-  #   assert_formatter_output(
-  #     """
-  #     <Component foo="..........." bar="..............." baz="............" qux="..................." />
-  #     """,
-  #     """
-  #     <Component
-  #       foo="..........."
-  #       bar="..............."
-  #       baz="............"
-  #       qux="..................."
-  #     />
-  #     """,
-  #     heex_line_length: 20,
-  #     line_length: 2000
-  #   )
-  # end
+    assert_formatter_doesnt_change(input)
+  end
 
-  # test "single line inputs are not changed" do
-  #   assert_formatter_doesnt_change("""
-  #   <div />
-  #   """)
+  test "break attributes into multiple lines in case it doesn't fit 98 characters (default)" do
+    input = """
+    <div foo="..........." bar="....................." baz="................." qux="....................">
+    <p><%= @user.name %></p>
+    </div>
+    """
 
-  #   assert_formatter_doesnt_change("""
-  #   <.component with="attribute" />
-  #   """)
-  # end
+    expected = """
+    <div
+      foo="..........."
+      bar="....................."
+      baz="................."
+      qux="....................">
+      <p><%= @user.name %></p>
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "single line inputs are not changed" do
+    assert_formatter_doesnt_change("""
+    <div />
+    """)
+
+    assert_formatter_doesnt_change("""
+    <.component with="attribute" />
+    """)
+  end
 
   # test "format when there are EEx tags" do
   #   assert_formatter_output(

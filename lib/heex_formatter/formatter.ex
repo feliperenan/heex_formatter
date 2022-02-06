@@ -71,8 +71,11 @@ defmodule HeexFormatter.Formatter do
     tag_open = build_tag_open(name, attrs)
 
     group =
-      [tag_open, nest(concat(break(""), document), 2), concat(break(""), "</#{name}>")]
-      |> concat()
+      concat([
+        concat(tag_open, ">"),
+        nest(concat(break(""), document), 2),
+        concat(break(""), "</#{name}>")
+      ])
       |> group()
 
     if name in @inline_elements do
@@ -80,6 +83,17 @@ defmodule HeexFormatter.Formatter do
     else
       {:block, force_unfit(group)}
     end
+  end
+
+  defp to_algebra({:tag, name, attrs}, _opts) do
+    tag_open = build_tag_open(name, attrs)
+
+    doc =
+      concat(tag_open, " />")
+      |> group()
+      |> force_unfit()
+
+    {:block, doc}
   end
 
   defp to_algebra({:text, text}, _opts) when is_binary(text) do
@@ -91,12 +105,11 @@ defmodule HeexFormatter.Formatter do
     {:inline, "<%#{text} %>"}
   end
 
-  defp build_tag_open(tag_name, []), do: "<#{tag_name}>"
+  defp build_tag_open(tag_name, []), do: "<#{tag_name}"
 
   defp build_tag_open(tag_name, attrs) do
     attrs
     |> Enum.reduce("<#{tag_name}", &attrs_to_algebra/2)
-    |> concat(">")
     |> nest(1)
     |> group()
   end
