@@ -169,7 +169,8 @@ defmodule HeexFormatterTest do
       class="alert alert-info more-class more-class"
       role="alert"
       phx-click="lv:clear-flash"
-      phx-value-key="info">
+      phx-value-key="info"
+    >
       <%= live_flash(@flash, :info) %>
     </p>
     """
@@ -240,7 +241,8 @@ defmodule HeexFormatterTest do
       foo="..........."
       bar="....................."
       baz="................."
-      qux="....................">
+      qux="...................."
+    >
       <p><%= @user.name %></p>
     </div>
     """
@@ -325,6 +327,8 @@ defmodule HeexFormatterTest do
       <% end %>
     </div>
     """
+
+    assert_formatter_output(input, expected)
   end
 
   # test "format when there are EEx tags" do

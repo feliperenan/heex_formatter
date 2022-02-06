@@ -40,8 +40,6 @@ defmodule HeexFormatter.Formatter do
       ""
   """
   def format(tree, opts) do
-    IO.inspect(tree)
-
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
     formatted =
@@ -70,13 +68,16 @@ defmodule HeexFormatter.Formatter do
 
   defp to_algebra({:tag_block, name, attrs, block}, opts) do
     document = block_to_algebra(block, opts)
-    tag_open = build_tag_open(name, attrs)
+    attrs = build_attrs(attrs)
 
     group =
       concat([
-        concat(tag_open, ">"),
+        "<#{name}",
+        attrs,
+        ">",
         nest(concat(break(""), document), 2),
-        concat(break(""), "</#{name}>")
+        break(""),
+        "</#{name}>"
       ])
       |> group()
 
@@ -89,10 +90,10 @@ defmodule HeexFormatter.Formatter do
 
   # TODO: maybe call it {:self_close_tag, .., ...} to be more explicit?
   defp to_algebra({:tag, name, attrs}, _opts) do
-    tag_open = build_tag_open(name, attrs)
+    attrs = build_attrs(attrs)
 
     doc =
-      concat([break(""), tag_open, " />"])
+      concat(["<#{name}", attrs, " />"])
       |> group()
       |> force_unfit()
 
@@ -106,20 +107,18 @@ defmodule HeexFormatter.Formatter do
   #   {[{:tag_block, "p", [], [text: "do something else"]}], "end"}
   # ]}
   defp to_algebra({:eex_block, expr, block}, opts) do
-    document = block_to_algebra(block, opts)
-    {:block, concat(["<%#{expr} %>", document])}
-  end
+    {doc, _stab} =
+      Enum.reduce(block, {empty(), false}, fn node, {doc, stab?} ->
+        {next_doc, stab?} = eex_block_to_algebra(node, stab?, opts)
+        {concat(doc, next_doc), stab?}
+      end)
 
-  # Handle EEx else, end and case/cond expressions.
-  #
-  # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
-  defp to_algebra({block, expr}, opts) when is_list(block) do
-    document =
-      break("")
-      |> concat(block_to_algebra(block, opts))
-      |> nest(2)
+    doc =
+      concat(["<%#{expr} %>", doc])
+      |> group()
+      |> force_unfit()
 
-    {:block, line(document, "<% #{expr} %>")}
+    {:block, doc}
   end
 
   defp to_algebra({:text, text}, _opts) when is_binary(text) do
@@ -131,17 +130,14 @@ defmodule HeexFormatter.Formatter do
     {:inline, "<%#{text} %>"}
   end
 
-  defp build_tag_open(tag_name, []), do: "<#{tag_name}"
+  defp build_attrs([]), do: empty()
 
-  defp build_tag_open(tag_name, attrs) do
+  defp build_attrs(attrs) do
     attrs
-    |> Enum.reduce("<#{tag_name}", &attrs_to_algebra/2)
-    |> nest(1)
+    |> Enum.reduce(empty(), &concat([&2, break(" "), render_attribute(&1)]))
+    |> nest(2)
+    |> concat(break(""))
     |> group()
-  end
-
-  defp attrs_to_algebra(attr, doc) do
-    concat([concat(doc, break("")), " ", render_attribute(attr)])
   end
 
   defp render_attribute({:root, {:expr, expr, _}}), do: ~s({#{expr}})
@@ -149,4 +145,35 @@ defmodule HeexFormatter.Formatter do
   defp render_attribute({attr, {:expr, value, _meta}}), do: ~s(#{attr}={#{value}})
   defp render_attribute({attr, {_, value, _meta}}), do: ~s(#{attr}=#{value})
   defp render_attribute({attr, nil}), do: ~s(#{attr})
+
+  # Handle cond/case first clause.
+  #
+  # {[], "something ->"}
+  defp eex_block_to_algebra({[], expr}, _stab?, _opts) do
+    {break("")
+     |> concat("<% #{expr} %>")
+     |> nest(2), true}
+  end
+
+  # Handle Eex else, end and case/cond expressions.
+  #
+  # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
+  defp eex_block_to_algebra({block, expr}, stab?, opts) when is_list(block) do
+    indent = if stab?, do: 4, else: 2
+
+    document =
+      break("")
+      |> concat(block_to_algebra(block, opts))
+      |> nest(indent)
+
+    stab? = String.ends_with?(expr, "->")
+    indent = if stab?, do: 2, else: 0
+
+    next =
+      break("")
+      |> concat("<% #{expr} %>")
+      |> nest(indent)
+
+    {concat(document, next), stab?}
+  end
 end
