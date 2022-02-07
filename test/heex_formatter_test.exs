@@ -662,6 +662,37 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
+  test "handle void elements" do
+    input = """
+    <div>
+    <link rel="shortcut icon" href={Routes.static_path(@conn, "/images/favicon.png")} type="image/x-icon">
+    <p>some text</p>
+    <br>
+    <hr>
+    <input type="text" value="Foo Bar">
+    <img src="./image.png">
+    </div>
+    """
+
+    expected = """
+    <div>
+      <link
+        rel="shortcut icon"
+        href={Routes.static_path(@conn, "/images/favicon.png")}
+        type="image/x-icon"
+       />
+      <p>some text</p>
+      <br />
+      <hr />
+      <input type="text" value="Foo Bar" />
+      <img src="./image.png" />
+    </div>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  # TODO form_for is not identing :(
   # test "handle eex form format" do
   #   input = """
   #   <div>
@@ -785,36 +816,6 @@ defmodule HeexFormatterTest do
 
   #       <%= submit("Save", phx_disable_with: "Saving...") %>
   #     </.form>
-  #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "handle void elements" do
-  #   input = """
-  #   <div>
-  #   <link rel="shortcut icon" href={Routes.static_path(@conn, "/images/favicon.png")} type="image/x-icon">
-  #   <p>some text</p>
-  #   <br>
-  #   <hr>
-  #   <input type="text" value="Foo Bar">
-  #   <img src="./image.png">
-  #   </div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <link
-  #       rel="shortcut icon"
-  #       href={Routes.static_path(@conn, "/images/favicon.png")}
-  #       type="image/x-icon"
-  #     >
-  #     <p>some text</p>
-  #     <br>
-  #     <hr>
-  #     <input type="text" value="Foo Bar">
-  #     <img src="./image.png">
   #   </div>
   #   """
 

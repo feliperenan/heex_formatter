@@ -1,6 +1,9 @@
 defmodule HeexFormatter.HtmlTree do
   @moduledoc false
 
+  # List void tags to be handled on `tag_open`.
+  @void_tags ~w(area base br col hr img input link meta param command keygen source)
+
   @doc """
   Build an HTML Tree givens tokens from `Tokenizer.tokenize/1`
   """
@@ -23,6 +26,10 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   defp build([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do
+    build(tokens, [{:tag, name, attrs} | buffer], stack)
+  end
+
+  defp build([{:tag_open, name, attrs, _meta} | tokens], buffer, stack) when name in @void_tags do
     build(tokens, [{:tag, name, attrs} | buffer], stack)
   end
 
