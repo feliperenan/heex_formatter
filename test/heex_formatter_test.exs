@@ -692,6 +692,34 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
+  test "format expressions within attributes" do
+    input = """
+      <.modal
+        id={id}
+        on_cancel={focus("#1", "#delete-song-1")}
+        on_confirm={JS.push("delete", value: %{id: song.id})
+                    |> hide_modal(id)
+                    |> focus_closest("#song-1")
+                    |> hide("#song-1")}
+      />
+    """
+
+    expected = """
+    <.modal
+      id={id}
+      on_cancel={focus("#1", "#delete-song-1")}
+      on_confirm={
+        JS.push("delete", value: %{id: song.id})
+        |> hide_modal(id)
+        |> focus_closest("#song-1")
+        |> hide("#song-1")
+      }
+     />
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
   # test "handle HTML comments but doens't format it" do
   #   input = """
   #       <!-- Inline comment -->

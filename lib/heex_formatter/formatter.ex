@@ -72,7 +72,7 @@ defmodule HeexFormatter.Formatter do
     group =
       concat([
         "<#{name}",
-        build_attrs(attrs),
+        build_attrs(attrs, opts),
         ">",
         nest(concat(break(""), document), 2),
         break(""),
@@ -87,8 +87,8 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
-  defp to_algebra({:tag_self_close, name, attrs}, _opts) do
-    doc = group(concat(["<#{name}", build_attrs(attrs), " />"]))
+  defp to_algebra({:tag_self_close, name, attrs}, opts) do
+    doc = group(concat(["<#{name}", build_attrs(attrs, opts), " />"]))
     {:block, force_unfit(doc)}
   end
 
@@ -110,20 +110,8 @@ defmodule HeexFormatter.Formatter do
     {:block, doc}
   end
 
-  defp to_algebra({:eex, text, %{opt: opt, column: column, line: line}}, opts) do
-    string_to_quoted_opts = [
-      literal_encoder: &{:ok, {:__block__, &2, [&1]}},
-      token_metadata: true,
-      unescape: false,
-      line: line,
-      column: column
-    ]
-
-    doc =
-      text
-      |> Code.string_to_quoted!(string_to_quoted_opts)
-      |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
-
+  defp to_algebra({:eex, text, %{opt: opt} = meta}, opts) do
+    doc = expr_to_code_algebra(text, meta, opts)
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
@@ -131,21 +119,31 @@ defmodule HeexFormatter.Formatter do
     {:inline, text}
   end
 
-  defp build_attrs([]), do: empty()
+  defp build_attrs([], _opts), do: empty()
 
-  defp build_attrs(attrs) do
+  defp build_attrs(attrs, opts) do
     attrs
-    |> Enum.reduce(empty(), &concat([&2, break(" "), render_attribute(&1)]))
+    |> Enum.reduce(empty(), &concat([&2, break(" "), render_attribute(&1, opts)]))
     |> nest(2)
     |> concat(break(""))
     |> group()
   end
 
-  defp render_attribute({:root, {:expr, expr, _}}), do: ~s({#{expr}})
-  defp render_attribute({attr, {:string, value, _meta}}), do: ~s(#{attr}="#{value}")
-  defp render_attribute({attr, {:expr, value, _meta}}), do: ~s(#{attr}={#{value}})
-  defp render_attribute({attr, {_, value, _meta}}), do: ~s(#{attr}=#{value})
-  defp render_attribute({attr, nil}), do: ~s(#{attr})
+  defp render_attribute({:root, {:expr, expr, _}}, _opts), do: ~s({#{expr}})
+  defp render_attribute({attr, {:string, value, _meta}}, _opts), do: ~s(#{attr}="#{value}")
+
+  defp render_attribute({attr, {:expr, value, meta}}, opts) do
+    expr =
+      break("")
+      |> concat(expr_to_code_algebra(value, meta, opts))
+      |> nest(2)
+
+    concat(["#{attr}={", expr, concat(break(""), "}")])
+    |> group()
+  end
+
+  defp render_attribute({attr, {_, value, _meta}}, _opts), do: ~s(#{attr}=#{value})
+  defp render_attribute({attr, nil}, _opts), do: ~s(#{attr})
 
   # Handle cond/case first clause.
   #
@@ -176,5 +174,19 @@ defmodule HeexFormatter.Formatter do
       |> nest(indent)
 
     {concat(document, next), stab?}
+  end
+
+  defp expr_to_code_algebra(expr, meta, opts) do
+    string_to_quoted_opts = [
+      literal_encoder: &{:ok, {:__block__, &2, [&1]}},
+      token_metadata: true,
+      unescape: false,
+      line: meta.line,
+      column: meta.column
+    ]
+
+    expr
+    |> Code.string_to_quoted!(string_to_quoted_opts)
+    |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
   end
 end
