@@ -48,7 +48,7 @@ defmodule HeexFormatter.HtmlTreeTest do
              {:tag_block, "h1", [], [text: "title"]},
              {:tag_block, "section", [],
               [
-                {:tag, "div", []},
+                {:tag_self_close, "div", []},
                 {:tag_block, "p", [], [text: "Hello"]}
               ]}
            ] = HtmlTree.build(tokens)

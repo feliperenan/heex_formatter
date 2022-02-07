@@ -87,15 +87,9 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
-  # TODO: maybe call it {:self_close_tag, .., ...} to be more explicit? and
-  # handle inline elements.
-  defp to_algebra({:tag, name, attrs}, _opts) do
-    doc =
-      concat(["<#{name}", build_attrs(attrs), " />"])
-      |> group()
-      |> force_unfit()
-
-    {:block, doc}
+  defp to_algebra({:tag_self_close, name, attrs}, _opts) do
+    doc = group(concat(["<#{name}", build_attrs(attrs), " />"]))
+    {:block, force_unfit(doc)}
   end
 
   # Handle EEX blocks
