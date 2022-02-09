@@ -24,7 +24,7 @@ defmodule HeexFormatter.MixProject do
       # Just while this PR gets merged:
       #
       # https://github.com/phoenixframework/phoenix_live_view/pull/1847
-      {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
+      {:phoenix_live_view, "~> 0.17.7"},
       {:jason, "~> 1.3"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]
