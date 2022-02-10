@@ -20,13 +20,20 @@ defmodule HeexFormatterTest do
     File.write!(ex_path, input_ex)
     File.write!(dot_formatter_path, inspect(dot_formatter_opts))
 
-    MixFormat.run([ex_path, "--dot-formatter", dot_formatter_path])
-
-    assert File.read!(ex_path) == expected
+    # Run mix format twice to make sure the formatted file doesn't change after
+    # another mix format.
+    formatted = run_formatter(ex_path, dot_formatter_path)
+    assert formatted == expected
+    assert run_formatter(ex_path, dot_formatter_path) == formatted
   end
 
   def assert_formatter_doesnt_change(code, opts \\ []) do
     assert_formatter_output(code, code, opts)
+  end
+
+  defp run_formatter(ex_path, dot_formatter_path) do
+    MixFormat.run([ex_path, "--dot-formatter", dot_formatter_path])
+    File.read!(ex_path)
   end
 
   test "always break lines for block elements" do
@@ -337,10 +344,7 @@ defmodule HeexFormatterTest do
         <%= live_redirect to: "url", id: "link", role: "button" do %>
           <div>     <p>content 1</p><p>content 2</p></div>
         <% end %>
-        <p>
-        <%=
-        @user.name
-        %></p>
+        <p><%= @user.name %></p>
         <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>
       </section>
     """
@@ -372,7 +376,9 @@ defmodule HeexFormatterTest do
       <head>
         <meta charset="utf-8" />
       </head>
-      <body><%= @inner_content %></body>
+      <body>
+        <%= @inner_content %>
+      </body>
     </html>
     """
 
@@ -399,7 +405,6 @@ defmodule HeexFormatterTest do
           $
           <%= @product.value %> in Dollars
         </p>
-
         <button>
           Submit
         </button>
@@ -719,6 +724,76 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "keep intentional line breaks" do
+    input = """
+    <section>
+      <h1>
+        <b>
+          <%= @user.first_name %><%= @user.last_name %>
+        </b>
+      </h1>
+
+      <div>
+        <p>test</p>
+      </div>
+
+      <h2>Subtitle</h2>
+    </section>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
+
+  test "keep eex expressions in the next line" do
+    input = """
+    <div class="mb-5">
+      <%= live_file_input(@uploads.image_url) %>
+      <%= error_tag(f, :image_url) %>
+    </div>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
+
+  test "keep intentional extra line between eex expressions" do
+    input = """
+    <div class="mb-5">
+      <%= live_file_input(@uploads.image_url) %>
+
+      <%= error_tag(f, :image_url) %>
+    </div>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
+
+  # test "formats script tag" do
+  #   input = """
+  #   <body>
+
+  #   text
+  #     <div><script>
+  #       var foo = 1;
+  #       console.log(foo);
+  #     </script></div>
+
+  #   </body>
+  #   """
+
+  #   expected = """
+  #   <body>
+  #     <div>
+  #       <script>
+  #         var foo = 1;
+  #         console.log(foo);
+  #       </script>
+  #     </div>
+  #   </body>
+  #   """
+
+  #   assert_formatter_output(input, expected)
+  # end
 
   # test "handle HTML comments but doens't format it" do
   #   input = """

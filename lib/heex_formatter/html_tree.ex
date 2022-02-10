@@ -99,13 +99,7 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   defp build([{:text, text, _meta} | tokens], buffer, stack) do
-    trimmed_text = String.trim(text)
-
-    if trimmed_text == "" do
-      build(tokens, buffer, stack)
-    else
-      build(tokens, [{:text, trimmed_text} | buffer], stack)
-    end
+    build(tokens, [{:text, text} | buffer], stack)
   end
 
   defp build([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do
@@ -121,7 +115,8 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   defp build([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
-    build(tokens, [{:tag_block, name, attrs, Enum.reverse(buffer)} | upper_buffer], stack)
+    tag_block = {:tag_block, name, attrs, reverse_without_newline(buffer)}
+    build(tokens, [tag_block | upper_buffer], stack)
   end
 
   # handle eex
@@ -133,32 +128,51 @@ defmodule HeexFormatter.HtmlTree do
   defp build([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
-    middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
+    middle_buffer = [{reverse_without_newline(buffer), middle_expr} | middle_buffer]
     build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
   defp build([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer} | stack
        ]) do
-    middle_buffer = [{Enum.reverse(buffer), middle_expr}]
+    middle_buffer = [{reverse_without_newline(buffer), middle_expr}]
     build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
   defp build([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
-    block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
+    block = Enum.reverse([{reverse_without_newline(buffer), end_expr} | middle_buffer])
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
   defp build([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer} | stack
        ]) do
-    block = [{Enum.reverse(buffer), end_expr}]
+    block = [{reverse_without_newline(buffer), end_expr}]
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
   defp build([{:eex, _type, expr, meta} | tokens], buffer, stack) do
     build(tokens, [{:eex, expr, meta} | buffer], stack)
   end
+
+  # In case the last node is a newline e.g. {:text, "\n\n"}, we are poping it
+  # from the list so we don't need to worry about it when formatting. It is
+  # better to do it here because the last node is the first item before reverting.
+  defp reverse_without_newline([]), do: []
+
+  defp reverse_without_newline([head | tail] = list) do
+    if line_break?(head) do
+      Enum.reverse(tail)
+    else
+      Enum.reverse(list)
+    end
+  end
+
+  defp line_break?({:text, text}) do
+    String.trim_trailing(text) == ""
+  end
+
+  defp line_break?(_node), do: false
 end
