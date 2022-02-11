@@ -53,53 +53,35 @@ defmodule HeexFormatter.Formatter do
   defp block_to_algebra([], _opts), do: empty()
 
   defp block_to_algebra([head | tail], opts) do
-    initial =
-      if line_break?(head) do
-        {:ignore, empty()}
-      else
-        to_algebra(head, opts)
+    tail
+    |> Enum.reduce(to_algebra(head, opts), fn node, {prev_type, prev_doc} ->
+      {next_type, next_doc} = to_algebra(node, opts)
+
+      cond do
+        prev_type == :inline and next_type == :inline ->
+          {next_type, concat([prev_doc, flex_break(""), next_doc])}
+
+        prev_type == :newline and next_type == :inline ->
+          {next_type, concat([prev_doc, line(), next_doc])}
+
+        next_type == :newline ->
+          if multiple_line_breaks?(node) do
+            {next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
+          else
+            {next_type, concat([prev_doc, next_doc])}
+          end
+
+        true ->
+          {next_type, concat([prev_doc, break(""), next_doc])}
       end
-
-    doc =
-      tail
-      |> Enum.reduce(initial, fn node, {prev_type, prev_doc} ->
-        {next_type, next_doc} = to_algebra(node, opts)
-
-        cond do
-          # It means that the previous item is the first item of the block and
-          # it is a line break. Therefore we want to ignore it.
-          prev_type == :ignore ->
-            {next_type, next_doc}
-
-          prev_type == :inline and next_type == :inline ->
-            {next_type, concat([prev_doc, flex_break(""), next_doc])}
-
-          prev_type == :newline and next_type == :inline ->
-            {next_type, concat([prev_doc, line(), next_doc])}
-
-          next_type == :newline ->
-            if multiple_line_breaks?(node) do
-              {next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
-            else
-              {next_type, concat([prev_doc, next_doc])}
-            end
-
-          true ->
-            {next_type, concat([prev_doc, break(""), next_doc])}
-        end
-      end)
-      |> elem(1)
-      |> group()
-
-    if line_break?(head) do
-      force_unfit(doc)
-    else
-      doc
-    end
+    end)
+    |> elem(1)
+    |> group()
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, opts) do
+  defp to_algebra({:tag_block, name, attrs, block, %{force_newline?: force_newline?}}, opts) do
     document = block_to_algebra(block, opts)
+    document = if force_newline?, do: force_unfit(document), else: document
 
     group =
       concat([
@@ -112,8 +94,7 @@ defmodule HeexFormatter.Formatter do
       ])
       |> group()
 
-    # TODO: maybe change to if line_break? and name in @block_elements
-    if !line_break?(List.first(block)) and name in @inline_elements do
+    if !force_newline? and name in @inline_elements do
       {:inline, group}
     else
       {:block, force_unfit(group)}
@@ -188,7 +169,7 @@ defmodule HeexFormatter.Formatter do
   # Handle cond/case first clause.
   #
   # {[], "something ->"}
-  defp eex_block_to_algebra({[], expr}, _stab?, _opts) do
+  defp eex_block_to_algebra({[], expr, _meta}, _stab?, _opts) do
     {break("")
      |> concat("<% #{expr} %>")
      |> nest(2), true}
@@ -197,7 +178,7 @@ defmodule HeexFormatter.Formatter do
   # Handle Eex else, end and case/cond expressions.
   #
   # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
-  defp eex_block_to_algebra({block, expr}, stab?, opts) when is_list(block) do
+  defp eex_block_to_algebra({block, expr, _meta}, stab?, opts) when is_list(block) do
     indent = if stab?, do: 4, else: 2
 
     document =
@@ -230,12 +211,7 @@ defmodule HeexFormatter.Formatter do
     |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
   end
 
-  # TODO: this is not correct because the document might have only spaces
-  # (not line breaks) and, for this case, we want to ignore the whole line.
-  defp line_break?({:text, text}) do
-    text |> String.to_charlist() |> Enum.all?(&(&1 in [?\s, ?\t, ?\r, ?\n]))
-  end
-
+  defp line_break?({:text, text}), do: String.trim_trailing(text) == ""
   defp line_break?(_node), do: false
 
   defp multiple_line_breaks?({:text, text}) do
