@@ -170,9 +170,9 @@ defmodule HeexFormatter.HtmlTree do
   defp reverse_and_trim_newlines([]), do: {[], %{force_newline?: false}}
 
   defp reverse_and_trim_newlines([head | tail] = list) do
-    reversed = if line_break?(head), do: Enum.reverse(tail), else: Enum.reverse(list)
+    reversed = if newline?(head), do: Enum.reverse(tail), else: Enum.reverse(list)
 
-    if line_break?(reversed) do
+    if newline?(reversed) do
       [_head | tail] = reversed
       {tail, %{force_newline?: true}}
     else
@@ -180,7 +180,7 @@ defmodule HeexFormatter.HtmlTree do
     end
   end
 
-  defp line_break?([head | _tail]), do: line_break?(head)
-  defp line_break?({:text, text}), do: String.trim_trailing(text) == ""
-  defp line_break?(_node), do: false
+  defp newline?([head | _tail]), do: newline?(head)
+  defp newline?({:text, text}), do: String.trim_trailing(text) == ""
+  defp newline?(_node), do: false
 end

@@ -65,7 +65,7 @@ defmodule HeexFormatter.Formatter do
           {next_type, concat([prev_doc, line(), next_doc])}
 
         next_type == :newline ->
-          if multiple_line_breaks?(node) do
+          if multiple_newlines?(node) do
             {next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
           else
             {next_type, concat([prev_doc, next_doc])}
@@ -130,13 +130,23 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp to_algebra({:text, text} = node, _opts) when is_binary(text) do
-    if line_break?(node) do
-      {:newline, empty()}
-    else
-      # We shouldn't trim it here but try to compute the indetation as suggested
-      # by this gist: https://gist.github.com/josevalim/69366f804f867fe13c9d44743db9be4a
-      # in order to handle script/styles and maybe HTML comments.
-      {:inline, text |> String.trim() |> string()}
+    cond do
+      # Check if the given node is new line: `{:text, "\n\n"}` and if so, we
+      # want to ignore it in the concatenation but sinalize that there is a
+      # newline.
+      newline?(node) ->
+        {:newline, empty()}
+
+      # Check if the given text starts with a new line: `{:text, "\nText Text"}`
+      # and if so, we want to force unfit it.
+      String.starts_with?(text, "\n") ->
+        {:inline, text |> String.trim() |> string() |> force_unfit()}
+
+      true ->
+        # We shouldn't trim it here but try to compute the indetation as suggested
+        # by this gist: https://gist.github.com/josevalim/69366f804f867fe13c9d44743db9be4a
+        # in order to handle script/styles and maybe HTML comments.
+        {:inline, text |> String.trim() |> string()}
     end
   end
 
@@ -211,11 +221,11 @@ defmodule HeexFormatter.Formatter do
     |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
   end
 
-  defp line_break?({:text, text}), do: String.trim_trailing(text) == ""
-  defp line_break?(_node), do: false
+  defp newline?({:text, text}), do: String.trim_trailing(text) == ""
+  defp newline?(_node), do: false
 
-  defp multiple_line_breaks?({:text, text}) do
-    line_breaks_count = text |> String.graphemes() |> Enum.count(&(&1 == "\n"))
-    line_breaks_count > 1
+  defp multiple_newlines?({:text, text}) do
+    newlines_count = text |> String.graphemes() |> Enum.count(&(&1 == "\n"))
+    newlines_count > 1
   end
 end

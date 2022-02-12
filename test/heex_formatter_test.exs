@@ -109,7 +109,9 @@ defmodule HeexFormatterTest do
     <section>
       <div>
         <h1>Hello</h1>
-        <h2>Sub title</h2>
+        <h2>
+          Sub title
+        </h2>
       </div>
     </section>
     """
@@ -410,8 +412,12 @@ defmodule HeexFormatterTest do
         </button>
       """,
       """
-      <p>$<%= @product.value %>in Dollars</p>
-      <button>Submit</button>
+      <p>
+        $<%= @product.value %>in Dollars
+      </p>
+      <button>
+        Submit
+      </button>
       """
     )
   end
@@ -558,7 +564,9 @@ defmodule HeexFormatterTest do
     """
 
     expected = """
-    <p>My title</p>
+    <p>
+      My title
+    </p>
     <p>
       This is tooooooooooooooooooooooooooooooooooooooo looooooong annnnnnnnnnnnnnd should breeeeeak liines
     </p>
@@ -756,13 +764,31 @@ defmodule HeexFormatterTest do
     assert_formatter_doesnt_change(input)
   end
 
-  test "keep intentional extra line between eex expressions" do
+  test "keep intentional extra line break between eex expressions" do
     input = """
     <div class="mb-5">
       <%= live_file_input(@uploads.image_url) %>
 
       <%= error_tag(f, :image_url) %>
     </div>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
+
+  test "force unfit when there are line breaks in the text" do
+    input = """
+    <b>
+      Text
+      Text
+      Text
+    </b>
+
+    <p>
+      Text
+      Text
+      Text
+    </p>
     """
 
     assert_formatter_doesnt_change(input)
