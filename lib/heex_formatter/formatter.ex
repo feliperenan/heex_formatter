@@ -79,9 +79,9 @@ defmodule HeexFormatter.Formatter do
     |> group()
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, %{force_newline?: force_newline?}}, opts) do
+  defp to_algebra({:tag_block, name, attrs, block, %{newlines: newlines}}, opts) do
     document = block_to_algebra(block, opts)
-    document = if force_newline?, do: force_unfit(document), else: document
+    document = if newlines > 0, do: force_unfit(document), else: document
 
     group =
       concat([
@@ -94,7 +94,7 @@ defmodule HeexFormatter.Formatter do
       ])
       |> group()
 
-    if !force_newline? and name in @inline_elements do
+    if !newlines > 0 and name in @inline_elements do
       {:inline, group}
     else
       {:block, force_unfit(group)}

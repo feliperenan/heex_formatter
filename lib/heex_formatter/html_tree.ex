@@ -167,20 +167,30 @@ defmodule HeexFormatter.HtmlTree do
   # In case the first node of a block is a new line `{:text, "\n"}`, it will
   # set the metadata `force_newline` as true so that we will know that we must
   # force a newline regardless of the tag type.
-  defp reverse_and_trim_newlines([]), do: {[], %{force_newline?: false}}
+  defp reverse_and_trim_newlines([]), do: {[], %{newlines: 0}}
 
   defp reverse_and_trim_newlines([head | tail] = list) do
-    reversed = if newline?(head), do: Enum.reverse(tail), else: Enum.reverse(list)
+    reversed = if only_spaces_or_newline?(head), do: Enum.reverse(tail), else: Enum.reverse(list)
 
-    if newline?(reversed) do
-      [_head | tail] = reversed
-      {tail, %{force_newline?: true}}
+    if only_spaces_or_newline?(reversed) do
+      [{:text, text} | tail] = reversed
+      {tail, %{newlines: count_newlines_until_text(text)}}
     else
-      {reversed, %{force_newline?: false}}
+      {reversed, %{newlines: 0}}
     end
   end
 
-  defp newline?([head | _tail]), do: newline?(head)
-  defp newline?({:text, text}), do: String.trim_trailing(text) == ""
-  defp newline?(_node), do: false
+  defp only_spaces_or_newline?([head | _tail]), do: only_spaces_or_newline?(head)
+  defp only_spaces_or_newline?({:text, text}), do: String.trim_leading(text) == ""
+  defp only_spaces_or_newline?(_node), do: false
+
+  defp count_newlines_until_text(text) do
+    text
+    |> String.to_charlist()
+    |> Enum.reduce_while(0, &count_newlines_until_text/2)
+  end
+
+  def count_newlines_until_text(char, acc) when char in [?\s, ?\t], do: {:cont, acc}
+  def count_newlines_until_text(char, acc) when char in [?\n], do: {:cont, acc + 1}
+  def count_newlines_until_text(_char, acc), do: {:halt, acc}
 end
