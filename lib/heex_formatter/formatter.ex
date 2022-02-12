@@ -53,8 +53,7 @@ defmodule HeexFormatter.Formatter do
   defp block_to_algebra([], _opts), do: empty()
 
   defp block_to_algebra([head | tail], opts) do
-    tail
-    |> Enum.reduce(to_algebra(head, opts), fn node, {prev_type, prev_doc} ->
+    Enum.reduce(tail, to_algebra(head, opts), fn node, {prev_type, prev_doc} ->
       {next_type, next_doc} = to_algebra(node, opts)
 
       cond do
@@ -130,25 +129,40 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp to_algebra({:text, text} = node, _opts) when is_binary(text) do
-    cond do
-      # Check if the given node is new line: `{:text, "\n\n"}` and if so, we
-      # want to ignore it in the concatenation but sinalize that there is a
-      # newline.
-      newline?(node) ->
-        {:newline, empty()}
-
-      # Check if the given text starts with a new line: `{:text, "\nText Text"}`
-      # and if so, we want to force unfit it.
-      String.starts_with?(text, "\n") ->
-        {:inline, text |> String.trim() |> string() |> force_unfit()}
-
-      true ->
-        # We shouldn't trim it here but try to compute the indetation as suggested
-        # by this gist: https://gist.github.com/josevalim/69366f804f867fe13c9d44743db9be4a
-        # in order to handle script/styles and maybe HTML comments.
-        {:inline, text |> String.trim() |> string()}
+    if newline?(node) do
+      {:newline, empty()}
+    else
+      {:inline,
+       text
+       |> String.split(["\r\n", "\n"])
+       |> Enum.map(&String.trim/1)
+       |> Enum.drop_while(&(&1 == ""))
+       |> text_to_algebra(0, [])}
     end
   end
+
+  # Empty newline
+  defp text_to_algebra(["" | lines], newlines, acc),
+    do: text_to_algebra(lines, newlines + 1, acc)
+
+  # Text
+  # Text
+  defp text_to_algebra([line | lines], 0, acc),
+    do: text_to_algebra(lines, 0, [string(line), line() | acc])
+
+  # Text
+  #
+  # Text
+  defp text_to_algebra([line | lines], _, acc),
+    do: text_to_algebra(lines, 0, [string(line), line(), nest(line(), :reset) | acc])
+
+  # Final clause: single line
+  defp text_to_algebra([], _, [doc, _line]),
+    do: doc
+
+  # Final clause: multiple lines
+  defp text_to_algebra([], _, acc),
+    do: acc |> Enum.reverse() |> tl() |> concat() |> force_unfit()
 
   defp build_attrs([], _opts), do: empty()
 
@@ -221,7 +235,7 @@ defmodule HeexFormatter.Formatter do
     |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
   end
 
-  defp newline?({:text, text}), do: String.trim_trailing(text) == ""
+  defp newline?({:text, text}), do: String.trim_leading(text) == ""
   defp newline?(_node), do: false
 
   defp multiple_newlines?({:text, text}) do

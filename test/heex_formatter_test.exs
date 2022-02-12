@@ -792,6 +792,60 @@ defmodule HeexFormatterTest do
     """
 
     assert_formatter_doesnt_change(input)
+
+    assert_formatter_output(
+      """
+      <b>\s\s
+      \tText
+        Text
+      \tText
+      </b>
+      """,
+      """
+      <b>
+        Text
+        Text
+        Text
+      </b>
+      """
+    )
+
+    assert_formatter_output(
+      """
+      <b>\s\s
+      \tText
+      \t
+      \tText
+      </b>
+      """,
+      """
+      <b>
+        Text
+
+        Text
+      </b>
+      """
+    )
+
+    assert_formatter_output(
+      """
+      <b>\s\s
+      \t
+      \tText
+      \t
+      \t
+      \tText
+      \t
+      </b>
+      """,
+      """
+      <b>
+        Text
+
+        Text
+      </b>
+      """
+    )
   end
 
   # test "formats script tag" do

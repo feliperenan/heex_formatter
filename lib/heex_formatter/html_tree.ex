@@ -174,9 +174,9 @@ defmodule HeexFormatter.HtmlTree do
 
     if only_spaces_or_newline?(reversed) do
       [{:text, text} | tail] = reversed
-      {tail, %{newlines: count_newlines_until_text(text)}}
+      {tail, %{newlines: count_newlines_until_text(text, 0)}}
     else
-      {reversed, %{newlines: 0}}
+      {reversed, %{newlines: count_newlines_until_text(reversed)}}
     end
   end
 
@@ -184,13 +184,18 @@ defmodule HeexFormatter.HtmlTree do
   defp only_spaces_or_newline?({:text, text}), do: String.trim_leading(text) == ""
   defp only_spaces_or_newline?(_node), do: false
 
-  defp count_newlines_until_text(text) do
-    text
-    |> String.to_charlist()
-    |> Enum.reduce_while(0, &count_newlines_until_text/2)
-  end
+  defp count_newlines_until_text([{:text, text} | _]),
+    do: count_newlines_until_text(text, 0)
 
-  def count_newlines_until_text(char, acc) when char in [?\s, ?\t], do: {:cont, acc}
-  def count_newlines_until_text(char, acc) when char in [?\n], do: {:cont, acc + 1}
-  def count_newlines_until_text(_char, acc), do: {:halt, acc}
+  defp count_newlines_until_text(_),
+    do: 0
+
+  defp count_newlines_until_text(<<char, rest::binary>>, counter) when char in '\s\t\r',
+    do: count_newlines_until_text(rest, counter)
+
+  defp count_newlines_until_text(<<?\n, rest::binary>>, counter),
+    do: count_newlines_until_text(rest, counter + 1)
+
+  defp count_newlines_until_text(_, counter),
+    do: counter
 end
