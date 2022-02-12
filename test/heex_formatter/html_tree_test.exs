@@ -19,20 +19,20 @@ defmodule HeexFormatter.HtmlTreeTest do
 
     tokens = Tokenizer.tokenize(contents)
 
-    assert [
-             {:text, "Text only\n"},
-             {:tag_block, "p", [], [text: "some text"], %{force_newline?: false}},
-             {:text, "\n"},
-             {:tag_block, "section", [],
-              [
-                {:tag_block, "div", [],
-                 [
-                   {:tag_block, "h1", [], [text: "Hello"], %{force_newline?: false}},
-                   {:text, "\n"},
-                   {:tag_block, "h2", [], [text: "Word"], %{force_newline?: false}}
-                 ], %{force_newline?: true}}
-              ], %{force_newline?: true}}
-           ] = HtmlTree.build(tokens)
+    [
+      {:text, "Text only\n", %{newlines: 0}},
+      {:tag_block, "p", [], [{:text, "some text", %{newlines: 0}}], %{force_newline?: false}},
+      {:text, "\n", %{newlines: 1}},
+      {:tag_block, "section", [],
+       [
+         {:tag_block, "div", [],
+          [
+            {:tag_block, "h1", [], [{:text, "Hello", %{newlines: 0}}], %{force_newline?: false}},
+            {:text, "\n", %{newlines: 1}},
+            {:tag_block, "h2", [], [{:text, "Word", %{newlines: 0}}], %{force_newline?: false}}
+          ], %{force_newline?: true}}
+       ], %{force_newline?: true}}
+    ] = HtmlTree.build(tokens)
   end
 
   test "handle self close tags" do
@@ -47,13 +47,14 @@ defmodule HeexFormatter.HtmlTreeTest do
     tokens = Tokenizer.tokenize(contents)
 
     assert [
-             {:tag_block, "h1", [], [text: "title"], %{force_newline?: false}},
-             {:text, "\n"},
+             {:tag_block, "h1", [], [{:text, "title", %{newlines: 0}}], %{force_newline?: false}},
+             {:text, "\n", %{newlines: 1}},
              {:tag_block, "section", [],
               [
                 {:tag_self_close, "div", []},
-                {:text, "\n  "},
-                {:tag_block, "p", [], [text: "Hello"], %{force_newline?: false}}
+                {:text, "\n  ", %{newlines: 1}},
+                {:tag_block, "p", [], [{:text, "Hello", %{newlines: 0}}],
+                 %{force_newline?: false}}
               ], %{force_newline?: true}}
            ] = HtmlTree.build(tokens)
   end
@@ -91,11 +92,16 @@ defmodule HeexFormatter.HtmlTreeTest do
     assert [
              {:eex_block, "if true do",
               [
-                {[
-                   {:tag_block, "p", [], [text: "test"], %{force_newline?: false}},
-                   {:text, "\n  "},
-                   {:eex, "\"Hello\"", %{column: 3, line: 2, opt: '='}}
-                 ], "end", %{force_newline?: true}}
+                {
+                  [
+                    {:tag_block, "p", [], [{:text, "test", %{newlines: 0}}],
+                     %{force_newline?: false}},
+                    {:text, "\n  ", %{newlines: 1}},
+                    {:eex, "\"Hello\"", %{column: 3, line: 2, opt: '='}}
+                  ],
+                  "end",
+                  %{force_newline?: true}
+                }
               ]}
            ] = HtmlTree.build(tokens)
   end
@@ -113,21 +119,29 @@ defmodule HeexFormatter.HtmlTreeTest do
 
     tokens = Tokenizer.tokenize(contents)
 
-    assert [
-             {:eex_block, "if true do",
-              [
-                {[
-                   {:tag_block, "p", [], [text: "test"], %{force_newline?: false}},
-                   {:text, "\n  "},
-                   {:eex, "\"Hello\"", %{column: 3, line: 2, opt: '='}}
-                 ], "else", %{force_newline?: true}},
-                {[
-                   {:tag_block, "p", [], [text: "error"], %{force_newline?: false}},
-                   {:text, "\n  "},
-                   {:eex, "\"World\"", %{column: 3, line: 5, opt: '='}}
-                 ], "end", %{force_newline?: true}}
-              ]}
-           ] = HtmlTree.build(tokens)
+    [
+      {:eex_block, "if true do",
+       [
+         {
+           [
+             {:tag_block, "p", [], [{:text, "test", %{newlines: 0}}], %{force_newline?: false}},
+             {:text, "\n  ", %{newlines: 1}},
+             {:eex, "\"Hello\"", %{column: 3, line: 2, opt: '='}}
+           ],
+           "else",
+           %{force_newline?: true}
+         },
+         {
+           [
+             {:tag_block, "p", [], [{:text, "error", %{newlines: 0}}], %{force_newline?: false}},
+             {:text, "\n  ", %{newlines: 1}},
+             {:eex, "\"World\"", %{column: 3, line: 5, opt: '='}}
+           ],
+           "end",
+           %{force_newline?: true}
+         }
+       ]}
+    ] = HtmlTree.build(tokens)
   end
 
   test "handle case expressions" do
@@ -179,17 +193,26 @@ defmodule HeexFormatter.HtmlTreeTest do
               [
                 {[], "foo? ->", %{force_newline?: false}},
                 {
-                  [{:tag_block, "p", [], [text: "foo"], %{force_newline?: false}}],
+                  [
+                    {:tag_block, "p", [], [{:text, "foo", %{newlines: 0}}],
+                     %{force_newline?: false}}
+                  ],
                   "bar? ->",
                   %{force_newline?: true}
                 },
                 {
-                  [{:tag_block, "p", [], [text: "bar"], %{force_newline?: false}}],
+                  [
+                    {:tag_block, "p", [], [{:text, "bar", %{newlines: 0}}],
+                     %{force_newline?: false}}
+                  ],
                   "true ->",
                   %{force_newline?: true}
                 },
                 {
-                  [{:tag_block, "p", [], [text: "baz"], %{force_newline?: false}}],
+                  [
+                    {:tag_block, "p", [], [{:text, "baz", %{newlines: 0}}],
+                     %{force_newline?: false}}
+                  ],
                   "end",
                   %{force_newline?: true}
                 }

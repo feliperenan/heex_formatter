@@ -64,7 +64,9 @@ defmodule HeexFormatter.Formatter do
           {next_type, concat([prev_doc, line(), next_doc])}
 
         next_type == :newline ->
-          if multiple_newlines?(node) do
+          {:text, _text, %{newlines: newlines}} = node
+
+          if newlines > 1 do
             {next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
           else
             {next_type, concat([prev_doc, next_doc])}
@@ -78,9 +80,9 @@ defmodule HeexFormatter.Formatter do
     |> group()
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, %{newlines: newlines}}, opts) do
+  defp to_algebra({:tag_block, name, attrs, block, %{force_newline?: force_newline?}}, opts) do
     document = block_to_algebra(block, opts)
-    document = if newlines > 0, do: force_unfit(document), else: document
+    document = if force_newline?, do: force_unfit(document), else: document
 
     group =
       concat([
@@ -93,7 +95,7 @@ defmodule HeexFormatter.Formatter do
       ])
       |> group()
 
-    if !newlines > 0 and name in @inline_elements do
+    if !force_newline? and name in @inline_elements do
       {:inline, group}
     else
       {:block, force_unfit(group)}
@@ -128,7 +130,7 @@ defmodule HeexFormatter.Formatter do
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
-  defp to_algebra({:text, text} = node, _opts) when is_binary(text) do
+  defp to_algebra({:text, text, _meta} = node, _opts) when is_binary(text) do
     if newline?(node) do
       {:newline, empty()}
     else
@@ -235,11 +237,6 @@ defmodule HeexFormatter.Formatter do
     |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
   end
 
-  defp newline?({:text, text}), do: String.trim_leading(text) == ""
+  defp newline?({:text, text, _meta}), do: String.trim_leading(text) == ""
   defp newline?(_node), do: false
-
-  defp multiple_newlines?({:text, text}) do
-    newlines_count = text |> String.graphemes() |> Enum.count(&(&1 == "\n"))
-    newlines_count > 1
-  end
 end

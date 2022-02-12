@@ -99,7 +99,8 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   defp build([{:text, text, _meta} | tokens], buffer, stack) do
-    build(tokens, [{:text, text} | buffer], stack)
+    meta = %{newlines: count_newlines_until_text(text, 0)}
+    build(tokens, [{:text, text, meta} | buffer], stack)
   end
 
   defp build([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do
@@ -167,28 +168,33 @@ defmodule HeexFormatter.HtmlTree do
   # In case the first node of a block is a new line `{:text, "\n"}`, it will
   # set the metadata `force_newline` as true so that we will know that we must
   # force a newline regardless of the tag type.
-  defp reverse_and_trim_newlines([]), do: {[], %{newlines: 0}}
+  defp reverse_and_trim_newlines([]), do: {[], %{force_newline?: false}}
 
-  defp reverse_and_trim_newlines([head | tail] = list) do
-    reversed = if only_spaces_or_newline?(head), do: Enum.reverse(tail), else: Enum.reverse(list)
+  defp reverse_and_trim_newlines(list) do
+    reversed =
+      if head_is_text_with_leading_newline?(list) do
+        list |> tl() |> Enum.reverse()
+      else
+        Enum.reverse(list)
+      end
 
-    if only_spaces_or_newline?(reversed) do
-      [{:text, text} | tail] = reversed
-      {tail, %{newlines: count_newlines_until_text(text, 0)}}
+    if head_is_text_with_leading_newline?(reversed) do
+      {tl(reversed), %{force_newline?: force_newline?(reversed)}}
     else
-      {reversed, %{newlines: count_newlines_until_text(reversed)}}
+      {reversed, %{force_newline?: force_newline?(reversed)}}
     end
   end
 
-  defp only_spaces_or_newline?([head | _tail]), do: only_spaces_or_newline?(head)
-  defp only_spaces_or_newline?({:text, text}), do: String.trim_leading(text) == ""
-  defp only_spaces_or_newline?(_node), do: false
+  defp force_newline?([{:text, _text, %{newlines: newlines}} | _tail]), do: newlines > 0
+  defp force_newline?(_list), do: false
 
-  defp count_newlines_until_text([{:text, text} | _]),
-    do: count_newlines_until_text(text, 0)
+  defp head_is_text_with_leading_newline?([head | _tail]),
+    do: head_is_text_with_leading_newline?(head)
 
-  defp count_newlines_until_text(_),
-    do: 0
+  defp head_is_text_with_leading_newline?({:text, text, _meta}),
+    do: String.trim_leading(text) == ""
+
+  defp head_is_text_with_leading_newline?(_node), do: false
 
   defp count_newlines_until_text(<<char, rest::binary>>, counter) when char in '\s\t\r',
     do: count_newlines_until_text(rest, counter)
