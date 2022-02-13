@@ -91,9 +91,22 @@ defmodule HeexFormatter.Formatter do
     |> group()
   end
 
-  # TODO: Handle spaces/newlines in the beginning and at the end of the tag. At
-  # the moment they are not sent by HTMLtree.
   defp to_algebra({:tag_block, "pre", attrs, block}, _context, opts) do
+    # TODO: improve me.
+    #
+    # I'm doing that so we can indentify if the last item is indeed text or
+    # just a line break.
+    block =
+      block
+      |> Enum.reverse()
+      |> case do
+        [{:text, text, _meta} | tail] ->
+          Enum.reverse([{:text, text, %{last: true}} | tail])
+
+        block ->
+          block
+      end
+
     children = block_to_algebra(block, :pre, opts) |> force_unfit()
 
     tag =
@@ -113,14 +126,26 @@ defmodule HeexFormatter.Formatter do
   defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
     {block, force_newline?} = trim_block_newlines(block)
     document = block_to_algebra(block, context, opts)
-    document = if force_newline? && context != :pre, do: force_unfit(document), else: document
+
+    document =
+      cond do
+        context == :pre ->
+          document
+
+        force_newline? ->
+          nest(concat(break(""), document), 2)
+          |> force_unfit()
+
+        true ->
+          nest(concat(break(""), document), 2)
+      end
 
     group =
       concat([
         "<#{name}",
         build_attrs(attrs, opts),
         ">",
-        nest(concat(break(""), document), 2),
+        document,
         break(""),
         "</#{name}>"
       ])
@@ -159,14 +184,11 @@ defmodule HeexFormatter.Formatter do
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
-  defp to_algebra({:text, text, _meta}, :pre, _opts) when is_binary(text) do
-    doc =
-      text
-      |> String.split(["\r\n", "\n"])
-      |> Enum.map_intersperse(line(), &string(&1))
-      |> concat()
-
-    {:inline, doc}
+  defp to_algebra({:text, text, meta}, :pre, _opts) when is_binary(text) do
+    {:inline,
+     text
+     |> String.split(["\r\n", "\n"])
+     |> text_pre_to_algebra(meta)}
   end
 
   defp to_algebra({:text, text, _meta} = node, _context, _opts) when is_binary(text) do
@@ -204,6 +226,41 @@ defmodule HeexFormatter.Formatter do
   # Final clause: multiple lines
   defp text_to_algebra([], _, acc),
     do: acc |> Enum.reverse() |> tl() |> concat() |> force_unfit()
+
+  # Transform texts within <pre> to Algebra.
+  #
+  # We drop the the last line break in case the last item is a text and there
+  # is a line break in the end. For instance:
+  #
+  #    <pre>
+  #  Text
+  #  Text
+  #    </pre>
+  #
+  # If we don't do that, it will add an extra \n before the tag <pre> every time
+  # the format is run.
+  defp text_pre_to_algebra(lines, %{last: true}) do
+    lines
+    |> Enum.reverse()
+    |> case do
+      [head | tail] = texts ->
+        if String.trim_leading(head) == "" do
+          Enum.reverse(tail)
+        else
+          Enum.reverse(texts)
+        end
+
+      [] ->
+        []
+    end
+    |> text_pre_to_algebra(nil)
+  end
+
+  defp text_pre_to_algebra(lines, _meta) do
+    lines
+    |> Enum.map_intersperse(line(), &string/1)
+    |> concat()
+  end
 
   defp build_attrs([], _opts), do: empty()
 

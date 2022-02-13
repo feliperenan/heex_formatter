@@ -868,7 +868,9 @@ defmodule HeexFormatterTest do
     assert_formatter_doesnt_change("""
     <pre>
     Text
-      <div>Text</div>
+      <div>
+          Text
+        </div>
     </pre>
     """)
 
