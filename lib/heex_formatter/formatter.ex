@@ -43,18 +43,29 @@ defmodule HeexFormatter.Formatter do
 
     formatted =
       tree
-      |> block_to_algebra(opts)
+      |> block_to_algebra(:normal, opts)
       |> group()
       |> Inspect.Algebra.format(line_length)
 
     [formatted, ?\n]
   end
 
-  defp block_to_algebra([], _opts), do: empty()
+  defp block_to_algebra([], _context, _opts), do: empty()
 
-  defp block_to_algebra([head | tail], opts) do
-    Enum.reduce(tail, to_algebra(head, opts), fn node, {prev_type, prev_doc} ->
-      {next_type, next_doc} = to_algebra(node, opts)
+  defp block_to_algebra([head | tail], :pre, opts) do
+    Enum.reduce(tail, to_algebra(head, :pre, opts), fn node, {_prev_type, prev_doc} ->
+      {next_type, next_doc} = to_algebra(node, :pre, opts)
+      {next_type, concat([prev_doc, next_doc])}
+    end)
+    |> elem(1)
+    |> group()
+  end
+
+  defp block_to_algebra([head | tail], context, opts) do
+    initial = to_algebra(head, context, opts) |> maybe_force_unfit()
+
+    Enum.reduce(tail, initial, fn node, {prev_type, prev_doc} ->
+      {next_type, next_doc} = to_algebra(node, context, opts) |> maybe_force_unfit()
 
       cond do
         prev_type == :inline and next_type == :inline ->
@@ -80,9 +91,29 @@ defmodule HeexFormatter.Formatter do
     |> group()
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, %{force_newline?: force_newline?}}, opts) do
-    document = block_to_algebra(block, opts)
-    document = if force_newline?, do: force_unfit(document), else: document
+  # TODO: Handle spaces/newlines in the beginning and at the end of the tag. At
+  # the moment they are not sent by HTMLtree.
+  defp to_algebra({:tag_block, "pre", attrs, block}, _context, opts) do
+    children = block_to_algebra(block, :pre, opts) |> force_unfit()
+
+    tag =
+      concat([
+        "<pre",
+        build_attrs(attrs, opts),
+        ">",
+        nest(children, :reset),
+        break(""),
+        "</pre>"
+      ])
+      |> group()
+
+    {:block, tag}
+  end
+
+  defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
+    {block, force_newline?} = trim_block_newlines(block)
+    document = block_to_algebra(block, context, opts)
+    document = if force_newline? && context != :pre, do: force_unfit(document), else: document
 
     group =
       concat([
@@ -98,39 +129,47 @@ defmodule HeexFormatter.Formatter do
     if !force_newline? and name in @inline_elements do
       {:inline, group}
     else
-      {:block, force_unfit(group)}
+      {:block, group}
     end
   end
 
-  defp to_algebra({:tag_self_close, name, attrs}, opts) do
+  defp to_algebra({:tag_self_close, name, attrs}, _context, opts) do
     doc = group(concat(["<#{name}", build_attrs(attrs, opts), " />"]))
-    {:block, force_unfit(doc)}
+    {:block, doc}
   end
 
   # Handle EEX blocks
   #
   # TODO: add examples as docs.
-  defp to_algebra({:eex_block, expr, block}, opts) do
+  defp to_algebra({:eex_block, expr, block}, context, opts) do
     {doc, _stab} =
-      Enum.reduce(block, {empty(), false}, fn node, {doc, stab?} ->
-        {next_doc, stab?} = eex_block_to_algebra(node, stab?, opts)
+      Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
+        {block, _force_newline?} = trim_block_newlines(block)
+        {next_doc, stab?} = eex_block_to_algebra(expr, block, stab?, context, opts)
         {concat(doc, next_doc), stab?}
       end)
 
-    doc =
-      concat(["<%= #{expr} %>", doc])
-      |> group()
-      |> force_unfit()
+    doc = group(concat(["<%= #{expr} %>", doc]))
 
     {:block, doc}
   end
 
-  defp to_algebra({:eex, text, %{opt: opt} = meta}, opts) do
+  defp to_algebra({:eex, text, %{opt: opt} = meta}, _context, opts) do
     doc = expr_to_code_algebra(text, meta, opts)
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
-  defp to_algebra({:text, text, _meta} = node, _opts) when is_binary(text) do
+  defp to_algebra({:text, text, _meta}, :pre, _opts) when is_binary(text) do
+    doc =
+      text
+      |> String.split(["\r\n", "\n"])
+      |> Enum.map_intersperse(line(), &string(&1))
+      |> concat()
+
+    {:inline, doc}
+  end
+
+  defp to_algebra({:text, text, _meta} = node, _context, _opts) when is_binary(text) do
     if newline?(node) do
       {:newline, empty()}
     else
@@ -155,7 +194,7 @@ defmodule HeexFormatter.Formatter do
   # Text
   #
   # Text
-  defp text_to_algebra([line | lines], _, acc),
+  defp text_to_algebra([line | lines], _newlines, acc),
     do: text_to_algebra(lines, 0, [string(line), line(), nest(line(), :reset) | acc])
 
   # Final clause: single line
@@ -195,7 +234,7 @@ defmodule HeexFormatter.Formatter do
   # Handle cond/case first clause.
   #
   # {[], "something ->"}
-  defp eex_block_to_algebra({[], expr, _meta}, _stab?, _opts) do
+  defp eex_block_to_algebra(expr, [], _stab?, _context, _opts) do
     {break("")
      |> concat("<% #{expr} %>")
      |> nest(2), true}
@@ -204,12 +243,12 @@ defmodule HeexFormatter.Formatter do
   # Handle Eex else, end and case/cond expressions.
   #
   # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
-  defp eex_block_to_algebra({block, expr, _meta}, stab?, opts) when is_list(block) do
+  defp eex_block_to_algebra(expr, block, stab?, context, opts) when is_list(block) do
     indent = if stab?, do: 4, else: 2
 
     document =
       break("")
-      |> concat(block_to_algebra(block, opts))
+      |> concat(block_to_algebra(block, context, opts))
       |> nest(indent)
 
     stab? = String.ends_with?(expr, "->")
@@ -239,4 +278,27 @@ defmodule HeexFormatter.Formatter do
 
   defp newline?({:text, text, _meta}), do: String.trim_leading(text) == ""
   defp newline?(_node), do: false
+
+  defp maybe_force_unfit({:block, doc}), do: {:block, force_unfit(doc)}
+  defp maybe_force_unfit(doc), do: doc
+
+  defp trim_block_newlines(block) do
+    {tail, force?} = pop_head_if_only_spaces_or_newlines(block)
+
+    {block, _} =
+      tail
+      |> Enum.reverse()
+      |> pop_head_if_only_spaces_or_newlines()
+
+    force? = if Enum.empty?(block), do: false, else: force?
+
+    {Enum.reverse(block), force?}
+  end
+
+  defp pop_head_if_only_spaces_or_newlines([{:text, text, meta} | tail] = block) do
+    force? = meta.newlines > 0
+    if String.trim_leading(text) == "", do: {tail, force?}, else: {block, force?}
+  end
+
+  defp pop_head_if_only_spaces_or_newlines(block), do: {block, false}
 end

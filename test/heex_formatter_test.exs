@@ -777,21 +777,18 @@ defmodule HeexFormatterTest do
   end
 
   test "force unfit when there are line breaks in the text" do
-    input = """
+    assert_formatter_doesnt_change("""
     <b>
       Text
       Text
       Text
     </b>
-
     <p>
       Text
       Text
       Text
     </p>
-    """
-
-    assert_formatter_doesnt_change(input)
+    """)
 
     assert_formatter_output(
       """
@@ -847,6 +844,70 @@ defmodule HeexFormatterTest do
       """
     )
   end
+
+  test "doesn't format content within <pre>" do
+    assert_formatter_output(
+      """
+      <div>
+      <pre>
+      Text
+      Text
+      </pre>
+      </div>
+      """,
+      """
+      <div>
+        <pre>
+      Text
+      Text
+        </pre>
+      </div>
+      """
+    )
+
+    assert_formatter_doesnt_change("""
+    <pre>
+    Text
+      <div>Text</div>
+    </pre>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <pre><code><div>
+    <p>Text</p>
+    <%= if true do %>
+      Hi
+    <% else %>
+      Ho
+    <% end %>
+    <p>Text</p>
+    </div></code></pre>
+    """)
+  end
+
+  # test "handle code tags but don't touch the code inside" do
+  #   input = """
+  #   <div>
+  #   <code>
+  #   public static void main(String[] args) {
+  #     System.out.println("Moin")
+  #   }
+  #   </code>
+  #   </div>
+  #   """
+
+  #   expected = """
+  #   <div>
+  #     <code>
+  #   public static void main(String[] args) {
+  #     System.out.println("Moin")
+  #   }
+  #     </code>
+  #   </div>
+  #   """
+
+  #   assert_formatter_output(input, expected)
+  # end
 
   # test "formats script tag" do
   #   input = """
@@ -1057,52 +1118,6 @@ defmodule HeexFormatterTest do
   #     font-weight: 900;
   #   }
   #     </style>
-  #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "handle pre tags but don't touch the preformatted contents" do
-  #   input = """
-  #   <div>
-  #   <pre>
-  #   break
-  #      break
-  #   </pre>
-  #   </div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <pre>
-  #   break
-  #      break
-  #     </pre>
-  #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "handle code tags but don't touch the code inside" do
-  #   input = """
-  #   <div>
-  #   <code>
-  #   public static void main(String[] args) {
-  #     System.out.println("Moin")
-  #   }
-  #   </code>
-  #   </div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <code>
-  #   public static void main(String[] args) {
-  #     System.out.println("Moin")
-  #   }
-  #     </code>
   #   </div>
   #   """
 

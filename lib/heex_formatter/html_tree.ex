@@ -116,8 +116,7 @@ defmodule HeexFormatter.HtmlTree do
   end
 
   defp build([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
-    {buffer, meta} = reverse_and_trim_newlines(buffer)
-    tag_block = {:tag_block, name, attrs, buffer, meta}
+    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer)}
     build(tokens, [tag_block | upper_buffer], stack)
   end
 
@@ -130,71 +129,34 @@ defmodule HeexFormatter.HtmlTree do
   defp build([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
-    {buffer, meta} = reverse_and_trim_newlines(buffer)
-    middle_buffer = [{buffer, middle_expr, meta} | middle_buffer]
+    middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
     build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
   defp build([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer} | stack
        ]) do
-    {buffer, meta} = reverse_and_trim_newlines(buffer)
-    middle_buffer = [{buffer, middle_expr, meta}]
+    middle_buffer = [{Enum.reverse(buffer), middle_expr}]
     build(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
   end
 
   defp build([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer, middle_buffer} | stack
        ]) do
-    {buffer, meta} = reverse_and_trim_newlines(buffer)
-    block = Enum.reverse([{buffer, end_expr, meta} | middle_buffer])
+    block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
   defp build([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
          {:eex_block, expr, upper_buffer} | stack
        ]) do
-    {buffer, meta} = reverse_and_trim_newlines(buffer)
-    block = [{buffer, end_expr, meta}]
+    block = [{Enum.reverse(buffer), end_expr}]
     build(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
   end
 
   defp build([{:eex, _type, expr, meta} | tokens], buffer, stack) do
     build(tokens, [{:eex, expr, meta} | buffer], stack)
   end
-
-  # Reverse the given buffer and trim newlines.
-  #
-  # In case the first node of a block is a new line `{:text, "\n"}`, it will
-  # set the metadata `force_newline` as true so that we will know that we must
-  # force a newline regardless of the tag type.
-  defp reverse_and_trim_newlines([]), do: {[], %{force_newline?: false}}
-
-  defp reverse_and_trim_newlines(list) do
-    reversed =
-      if head_is_text_with_leading_newline?(list) do
-        list |> tl() |> Enum.reverse()
-      else
-        Enum.reverse(list)
-      end
-
-    if head_is_text_with_leading_newline?(reversed) do
-      {tl(reversed), %{force_newline?: force_newline?(reversed)}}
-    else
-      {reversed, %{force_newline?: force_newline?(reversed)}}
-    end
-  end
-
-  defp force_newline?([{:text, _text, %{newlines: newlines}} | _tail]), do: newlines > 0
-  defp force_newline?(_list), do: false
-
-  defp head_is_text_with_leading_newline?([head | _tail]),
-    do: head_is_text_with_leading_newline?(head)
-
-  defp head_is_text_with_leading_newline?({:text, text, _meta}),
-    do: String.trim_leading(text) == ""
-
-  defp head_is_text_with_leading_newline?(_node), do: false
 
   defp count_newlines_until_text(<<char, rest::binary>>, counter) when char in '\s\t\r',
     do: count_newlines_until_text(rest, counter)
