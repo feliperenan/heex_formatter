@@ -16,32 +16,37 @@ add `:heex_formatter` as dependency
 defp deps do
   [
     # ...
-    {:heex_formatter, github: "feliperenan/heex_formatter"}
+    {:heex_formatter, github: "feliperenan/heex_formatter"},
   ]
 end
 ```
 
-Add it as plugin to your project `.formatter.exs` file.
+Add it to your projects `.formatter.exs` file
 
 ```elixir
 [
   plugins: [HeexFormatter],
-  import_deps: [:ecto, :phoenix],
-  inputs: ["*.{heex,ex,exs}", "priv/*/seeds.exs", "{config,lib,test}/**/*.{heex,ex,exs}"],
-  subdirectories: ["priv/*/migrations"]
+  inputs: [
+    # ...
+    "*.{heex,ex,exs}",
+    "{config,lib,test}/**/*.{heex,ex,exs}"
+  ],
 ]
 ```
+
 Now run
+
 ```elixir
-mix compile
+mix format
 ```
+
 ### options
 
 #### line_length
 
 The formatter defaults to a maximum line_length of 98 characters, which can be overwritten with the `line_length` option in the `.formatter` file.
 
-Set `heex_line_length` to only set the line:lenght for the heex formatter.
+Set `heex_line_length` to only set the line:length for the heex formatter.
 
 ```elixir
 [
