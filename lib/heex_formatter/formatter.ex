@@ -123,22 +123,8 @@ defmodule HeexFormatter.Formatter do
     {:block, tag}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
-    {block, force_newline?} = trim_block_newlines(block)
-    document = block_to_algebra(block, context, opts)
-
-    document =
-      cond do
-        context == :pre ->
-          document
-
-        force_newline? ->
-          nest(concat(break(""), document), 2)
-          |> force_unfit()
-
-        true ->
-          nest(concat(break(""), document), 2)
-      end
+  defp to_algebra({:tag_block, name, attrs, block}, :pre, opts) do
+    document = block_to_algebra(block, :pre, opts)
 
     group =
       concat([
@@ -146,6 +132,25 @@ defmodule HeexFormatter.Formatter do
         build_attrs(attrs, opts),
         ">",
         document,
+        break(""),
+        "</#{name}>"
+      ])
+      |> group()
+
+    {:block, group}
+  end
+
+  defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
+    {block, force_newline?} = trim_block_newlines(block)
+    document = block_to_algebra(block, context, opts)
+    document = if force_newline?, do: force_unfit(document), else: document
+
+    group =
+      concat([
+        "<#{name}",
+        build_attrs(attrs, opts),
+        ">",
+        nest(concat(break(""), document), 2),
         break(""),
         "</#{name}>"
       ])
@@ -163,6 +168,22 @@ defmodule HeexFormatter.Formatter do
     {:block, doc}
   end
 
+  # Handle EEX blocks within `pre` tag
+  #
+  # TODO: add examples as docs.
+  defp to_algebra({:eex_block, expr, block}, :pre, opts) do
+    doc =
+      Enum.reduce(block, empty(), fn {block, expr}, doc ->
+        children = concat(break(""), block_to_algebra(block, :pre, opts))
+        expr = concat(break(""), "<% #{expr} %>")
+        concat(doc, concat(children, expr))
+      end)
+
+    doc = group(concat(["<%= #{expr} %>", doc]))
+
+    {:block, doc}
+  end
+
   # Handle EEX blocks
   #
   # TODO: add examples as docs.
@@ -170,6 +191,7 @@ defmodule HeexFormatter.Formatter do
     {doc, _stab} =
       Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
         {block, _force_newline?} = trim_block_newlines(block)
+
         {next_doc, stab?} = eex_block_to_algebra(expr, block, stab?, context, opts)
         {concat(doc, next_doc), stab?}
       end)

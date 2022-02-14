@@ -883,7 +883,8 @@ defmodule HeexFormatterTest do
       Ho
     <% end %>
     <p>Text</p>
-    </div></code></pre>
+    </div></code>
+    </pre>
     """)
   end
 
