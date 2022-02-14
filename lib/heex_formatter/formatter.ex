@@ -52,12 +52,12 @@ defmodule HeexFormatter.Formatter do
 
   defp block_to_algebra([], _context, _opts), do: empty()
 
-  defp block_to_algebra([head | tail], :pre, opts) do
-    Enum.reduce(tail, to_algebra(head, :pre, opts), fn node, {_prev_type, prev_doc} ->
-      {next_type, next_doc} = to_algebra(node, :pre, opts)
-      {next_type, concat([prev_doc, next_doc])}
+  defp block_to_algebra(block, :pre, opts) do
+    block
+    |> Enum.reduce(empty(), fn node, doc ->
+      {_type, next_doc} = to_algebra(node, :pre, opts)
+      concat(doc, next_doc)
     end)
-    |> elem(1)
     |> group()
   end
 
@@ -164,8 +164,7 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp to_algebra({:tag_self_close, name, attrs}, _context, opts) do
-    doc = group(concat(["<#{name}", build_attrs(attrs, opts), " />"]))
-    {:block, doc}
+    {:block, group(concat(["<#{name}", build_attrs(attrs, opts), " />"]))}
   end
 
   # Handle EEX blocks within `pre` tag
@@ -179,9 +178,7 @@ defmodule HeexFormatter.Formatter do
         concat(doc, concat(children, expr))
       end)
 
-    doc = group(concat(["<%= #{expr} %>", doc]))
-
-    {:block, doc}
+    {:block, group(concat("<%= #{expr} %>", doc))}
   end
 
   # Handle EEX blocks
@@ -191,14 +188,11 @@ defmodule HeexFormatter.Formatter do
     {doc, _stab} =
       Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
         {block, _force_newline?} = trim_block_newlines(block)
-
         {next_doc, stab?} = eex_block_to_algebra(expr, block, stab?, context, opts)
-        {concat(doc, next_doc), stab?}
+        {concat(doc, force_unfit(next_doc)), stab?}
       end)
 
-    doc = group(concat(["<%= #{expr} %>", doc]))
-
-    {:block, doc}
+    {:block, group(concat("<%= #{expr} %>", doc))}
   end
 
   defp to_algebra({:eex, text, %{opt: opt} = meta}, _context, opts) do
@@ -206,6 +200,7 @@ defmodule HeexFormatter.Formatter do
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
+  # Handle Text within <pre> tag.
   defp to_algebra({:text, text, meta}, :pre, _opts) when is_binary(text) do
     {:inline,
      text
@@ -213,6 +208,7 @@ defmodule HeexFormatter.Formatter do
      |> text_pre_to_algebra(meta)}
   end
 
+  # Handle Text within other tags.
   defp to_algebra({:text, text, _meta} = node, _context, _opts) when is_binary(text) do
     if newline?(node) do
       {:newline, empty()}

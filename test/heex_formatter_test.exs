@@ -888,29 +888,20 @@ defmodule HeexFormatterTest do
     """)
   end
 
-  # test "handle code tags but don't touch the code inside" do
-  #   input = """
-  #   <div>
-  #   <code>
-  #   public static void main(String[] args) {
-  #     System.out.println("Moin")
-  #   }
-  #   </code>
-  #   </div>
-  #   """
+  test "format label block correctly" do
+    input = """
+    <%= label @f, :email_address, class: "text-gray font-medium" do %> Email Address
+    <% end %>
+    """
 
-  #   expected = """
-  #   <div>
-  #     <code>
-  #   public static void main(String[] args) {
-  #     System.out.println("Moin")
-  #   }
-  #     </code>
-  #   </div>
-  #   """
+    expected = """
+    <%= label @f, :email_address, class: "text-gray font-medium" do %>
+      Email Address
+    <% end %>
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected)
+  end
 
   # test "formats script tag" do
   #   input = """
@@ -1007,102 +998,6 @@ defmodule HeexFormatterTest do
   #   assert_formatter_output(input, expected)
   # end
 
-  # test "keep single line breaks" do
-  #   input = """
-  #   <div>
-  #   <h2><%= @title %></h2>
-
-  #   <.form id="user-form" let={f} for={@changeset} phx-submit="save" >
-  #     <%= text_input f, :name %>
-  #     <%= error_tag(f, :name) %>
-
-  #     <%= number_input(f, :age) %>
-  #     <%= error_tag(f, :age) %>
-
-  #     <%= submit("Save", phx_disable_with: "Saving...") %>
-  #   </.form>
-  #   </div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <h2>
-  #       <%= @title %>
-  #     </h2>
-
-  #     <.form id="user-form" let={f} for={@changeset} phx-submit="save">
-  #       <%= text_input(f, :name) %>
-  #       <%= error_tag(f, :name) %>
-
-  #       <%= number_input(f, :age) %>
-  #       <%= error_tag(f, :age) %>
-
-  #       <%= submit("Save", phx_disable_with: "Saving...") %>
-  #     </.form>
-  #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "format label block correctly" do
-  #   input = """
-  #   <%= label @f, :email_address, class: "text-gray font-medium" do %> Email Address
-  #   <% end %>
-  #   """
-
-  #   expected = """
-  #   <%= label @f, :email_address, class: "text-gray font-medium" do %>
-  #     Email Address
-  #   <% end %>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  #
-  # test "handle script tags but don't touch JS code" do
-  #   input = """
-  #   <div>
-  #   <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('<%= "confirmation text" %>')) {
-  #     event.stopPropagation()
-  #   }
-  #     return false;
-  #   };
-  #   </script>
-  #   <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('foo')) { event.stopPropagation() }
-  #     return false;
-  #   };
-  #   </script>
-  #   </div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('<%= "confirmation text" %>')) {
-  #     event.stopPropagation()
-  #   }
-  #     return false;
-  #   };
-  #     </script>
-  #     <script>
-  #   function my_confirm(event) {
-  #     if (!confirm('foo')) { event.stopPropagation() }
-  #     return false;
-  #   };
-  #     </script>
-  #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-  #
   # test "handle style tags but don't touch CSS code" do
   #   input = """
   #   <div>
