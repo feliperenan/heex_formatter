@@ -903,32 +903,41 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  # test "formats script tag" do
-  #   input = """
-  #   <body>
+  test "formats script tag" do
+    input = """
+    <body>
 
-  #   text
-  #     <div><script>
-  #       var foo = 1;
-  #       console.log(foo);
-  #     </script></div>
+    text
+      <div><script>
+        const foo = 1;
+        const map = {
+          a: 1,
+          b: 2,
+        }
+        console.log(foo);
+      </script></div>
 
-  #   </body>
-  #   """
+    </body>
+    """
 
-  #   expected = """
-  #   <body>
-  #     <div>
-  #       <script>
-  #         var foo = 1;
-  #         console.log(foo);
-  #       </script>
-  #     </div>
-  #   </body>
-  #   """
+    expected = """
+    <body>
+      text
+      <div>
+        <script>
+          const foo = 1;
+          const map = {
+            a: 1,
+            b: 2,
+          };
+          console.log(foo);
+        </script>
+      </div>
+    </body>
+    """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_output(input, expected)
+  end
 
   # test "handle HTML comments but doens't format it" do
   #   input = """

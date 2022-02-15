@@ -39,11 +39,12 @@ defmodule HeexFormatter.Formatter do
       ""
   """
   def format(tree, opts) when is_list(tree) do
+    IO.inspect(tree)
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
     formatted =
       tree
-      |> block_to_algebra(:normal, opts)
+      |> block_to_algebra(%{mode: :normal, tag: nil}, opts)
       |> group()
       |> Inspect.Algebra.format(line_length)
 
@@ -52,20 +53,26 @@ defmodule HeexFormatter.Formatter do
 
   defp block_to_algebra([], _context, _opts), do: empty()
 
-  defp block_to_algebra(block, :pre, opts) do
+  defp block_to_algebra(block, %{mode: :pre} = context, opts) do
     block
     |> Enum.reduce(empty(), fn node, doc ->
-      {_type, next_doc} = to_algebra(node, :pre, opts)
+      {_type, next_doc} = to_algebra(node, context, opts)
       concat(doc, next_doc)
     end)
     |> group()
   end
 
   defp block_to_algebra([head | tail], context, opts) do
-    initial = to_algebra(head, context, opts) |> maybe_force_unfit()
+    initial =
+      head
+      |> to_algebra(context, opts)
+      |> maybe_force_unfit()
 
     Enum.reduce(tail, initial, fn node, {prev_type, prev_doc} ->
-      {next_type, next_doc} = to_algebra(node, context, opts) |> maybe_force_unfit()
+      {next_type, next_doc} =
+        node
+        |> to_algebra(context, opts)
+        |> maybe_force_unfit()
 
       cond do
         prev_type == :inline and next_type == :inline ->
@@ -91,7 +98,7 @@ defmodule HeexFormatter.Formatter do
     |> group()
   end
 
-  defp to_algebra({:tag_block, "pre", attrs, block}, _context, opts) do
+  defp to_algebra({:tag_block, "pre", attrs, block}, context, opts) do
     # TODO: improve me.
     #
     # I'm doing that so we can indentify if the last item is indeed text or
@@ -107,7 +114,10 @@ defmodule HeexFormatter.Formatter do
           block
       end
 
-    children = block_to_algebra(block, :pre, opts) |> force_unfit()
+    children =
+      block
+      |> block_to_algebra(%{context | mode: :pre, tag: "pre"}, opts)
+      |> force_unfit()
 
     tag =
       concat([
@@ -123,15 +133,15 @@ defmodule HeexFormatter.Formatter do
     {:block, tag}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, :pre, opts) do
-    document = block_to_algebra(block, :pre, opts)
+  defp to_algebra({:tag_block, name, attrs, block}, %{mode: :pre} = context, opts) do
+    children = block_to_algebra(block, %{context | mode: :pre, tag: name}, opts)
 
     group =
       concat([
         "<#{name}",
         build_attrs(attrs, opts),
         ">",
-        document,
+        children,
         break(""),
         "</#{name}>"
       ])
@@ -142,7 +152,7 @@ defmodule HeexFormatter.Formatter do
 
   defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
     {block, force_newline?} = trim_block_newlines(block)
-    document = block_to_algebra(block, context, opts)
+    document = block_to_algebra(block, %{context | tag: name}, opts)
     document = if force_newline?, do: force_unfit(document), else: document
 
     group =
@@ -170,10 +180,11 @@ defmodule HeexFormatter.Formatter do
   # Handle EEX blocks within `pre` tag
   #
   # TODO: add examples as docs.
-  defp to_algebra({:eex_block, expr, block}, :pre, opts) do
+  defp to_algebra({:eex_block, expr, block}, %{mode: :pre} = context, opts) do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
-        children = concat(break(""), block_to_algebra(block, :pre, opts))
+        context = %{context | tag: :eex_block}
+        children = concat(break(""), block_to_algebra(block, context, opts))
         expr = concat(break(""), "<% #{expr} %>")
         concat(doc, concat(children, expr))
       end)
@@ -188,6 +199,7 @@ defmodule HeexFormatter.Formatter do
     {doc, _stab} =
       Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
         {block, _force_newline?} = trim_block_newlines(block)
+        context = %{context | tag: :eex_block}
         {next_doc, stab?} = eex_block_to_algebra(expr, block, stab?, context, opts)
         {concat(doc, force_unfit(next_doc)), stab?}
       end)
@@ -201,11 +213,35 @@ defmodule HeexFormatter.Formatter do
   end
 
   # Handle Text within <pre> tag.
-  defp to_algebra({:text, text, meta}, :pre, _opts) when is_binary(text) do
+  defp to_algebra({:text, text, meta}, %{mode: :pre}, _opts) when is_binary(text) do
     {:inline,
      text
      |> String.split(["\r\n", "\n"])
      |> text_pre_to_algebra(meta)}
+  end
+
+  # Handle Text within <script> tag.
+  defp to_algebra({:text, text, _meta}, %{tag: tag}, _opts)
+       when is_binary(text) and tag in ~w(script style) do
+    # compute indentation for each line.
+    lines_with_indentation =
+      text
+      |> String.split(["\r\n", "\n"])
+      |> trim_new_lines()
+      |> Enum.map(&{&1, count_spaces_and_tabs(&1)})
+
+    lines =
+      Enum.reduce(lines_with_indentation, [], fn
+        {"", _indentation}, lines ->
+          [nest(line(), :reset) | lines]
+
+        {line, _indentation}, lines ->
+          # TODO: put the indentation back.
+          # line = binary_part(line, indentation, max(0, byte_size(line) - indentation))
+          [line(), string(line) | lines]
+      end)
+
+    {:inline, lines |> tl() |> Enum.reverse() |> concat()}
   end
 
   # Handle Text within other tags.
@@ -376,4 +412,23 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp pop_head_if_only_spaces_or_newlines(block), do: {block, false}
+
+  defp count_spaces_and_tabs(binary, counter \\ 0)
+
+  defp count_spaces_and_tabs(<<?\t, rest::binary>>, counter),
+    do: count_spaces_and_tabs(rest, counter + 2)
+
+  defp count_spaces_and_tabs(<<?\s, rest::binary>>, counter),
+    do: count_spaces_and_tabs(rest, counter + 1)
+
+  defp count_spaces_and_tabs(_, counter),
+    do: counter
+
+  defp trim_new_lines(lines) do
+    lines
+    |> Enum.drop_while(&(String.trim_leading(&1) == ""))
+    |> Enum.reverse()
+    |> Enum.drop_while(&(String.trim_leading(&1) == ""))
+    |> Enum.reverse()
+  end
 end
