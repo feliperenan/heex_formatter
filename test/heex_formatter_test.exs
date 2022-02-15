@@ -4,6 +4,7 @@ defmodule HeexFormatterTest do
 
   alias Mix.Tasks.Format, as: MixFormat
 
+  # TODO: use string API on tests and have two or three integration tests
   # Write a unique file and .formatter.exs for a test, run `mix format` on the
   # file, and assert whether the input matches the expected output.
   defp assert_formatter_output(input_ex, expected, dot_formatter_opts \\ []) do
@@ -860,7 +861,20 @@ defmodule HeexFormatterTest do
         <pre>
       Text
       Text
-        </pre>
+      </pre>
+      </div>
+      """
+    )
+
+    assert_formatter_output(
+      """
+      <div><pre>Text
+      Text</pre></div>
+      """,
+      """
+      <div>
+        <pre>Text
+      Text</pre>
       </div>
       """
     )

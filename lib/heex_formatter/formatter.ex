@@ -39,11 +39,11 @@ defmodule HeexFormatter.Formatter do
       ""
   """
   def format(tree, opts) when is_list(tree) do
-    IO.inspect(tree)
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
 
     formatted =
       tree
+      # TODO: remove :tag
       |> block_to_algebra(%{mode: :normal, tag: nil}, opts)
       |> group()
       |> Inspect.Algebra.format(line_length)
@@ -99,25 +99,7 @@ defmodule HeexFormatter.Formatter do
   end
 
   defp to_algebra({:tag_block, "pre", attrs, block}, context, opts) do
-    # TODO: improve me.
-    #
-    # I'm doing that so we can indentify if the last item is indeed text or
-    # just a line break.
-    block =
-      block
-      |> Enum.reverse()
-      |> case do
-        [{:text, text, _meta} | tail] ->
-          Enum.reverse([{:text, text, %{last: true}} | tail])
-
-        block ->
-          block
-      end
-
-    children =
-      block
-      |> block_to_algebra(%{context | mode: :pre, tag: "pre"}, opts)
-      |> force_unfit()
+    children = block_to_algebra(block, %{context | mode: :pre, tag: "pre"}, opts)
 
     tag =
       concat([
@@ -125,7 +107,6 @@ defmodule HeexFormatter.Formatter do
         build_attrs(attrs, opts),
         ">",
         nest(children, :reset),
-        break(""),
         "</pre>"
       ])
       |> group()
@@ -142,12 +123,10 @@ defmodule HeexFormatter.Formatter do
         build_attrs(attrs, opts),
         ">",
         children,
-        break(""),
         "</#{name}>"
       ])
-      |> group()
 
-    {:block, group}
+    {:inline, group}
   end
 
   defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
@@ -213,11 +192,12 @@ defmodule HeexFormatter.Formatter do
   end
 
   # Handle Text within <pre> tag.
-  defp to_algebra({:text, text, meta}, %{mode: :pre}, _opts) when is_binary(text) do
+  defp to_algebra({:text, text, _meta}, %{mode: :pre}, _opts) when is_binary(text) do
     {:inline,
      text
      |> String.split(["\r\n", "\n"])
-     |> text_pre_to_algebra(meta)}
+     |> Enum.map_intersperse(line(), &string/1)
+     |> concat()}
   end
 
   # Handle Text within <script> tag.
@@ -280,41 +260,6 @@ defmodule HeexFormatter.Formatter do
   # Final clause: multiple lines
   defp text_to_algebra([], _, acc),
     do: acc |> Enum.reverse() |> tl() |> concat() |> force_unfit()
-
-  # Transform texts within <pre> to Algebra.
-  #
-  # We drop the the last line break in case the last item is a text and there
-  # is a line break in the end. For instance:
-  #
-  #    <pre>
-  #  Text
-  #  Text
-  #    </pre>
-  #
-  # If we don't do that, it will add an extra \n before the tag <pre> every time
-  # the format is run.
-  defp text_pre_to_algebra(lines, %{last: true}) do
-    lines
-    |> Enum.reverse()
-    |> case do
-      [head | tail] = texts ->
-        if String.trim_leading(head) == "" do
-          Enum.reverse(tail)
-        else
-          Enum.reverse(texts)
-        end
-
-      [] ->
-        []
-    end
-    |> text_pre_to_algebra(nil)
-  end
-
-  defp text_pre_to_algebra(lines, _meta) do
-    lines
-    |> Enum.map_intersperse(line(), &string/1)
-    |> concat()
-  end
 
   defp build_attrs([], _opts), do: empty()
 
