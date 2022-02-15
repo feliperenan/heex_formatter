@@ -203,25 +203,27 @@ defmodule HeexFormatter.Formatter do
   # Handle Text within <script> tag.
   defp to_algebra({:text, text, _meta}, %{tag: tag}, _opts)
        when is_binary(text) and tag in ~w(script style) do
-    # compute indentation for each line.
-    lines_with_indentation =
-      text
-      |> String.split(["\r\n", "\n"])
-      |> trim_new_lines()
-      |> Enum.map(&{&1, count_spaces_and_tabs(&1)})
+    # start with all lines
+    lines = String.split(text, ["\r\n", "\n"])
 
-    lines =
-      Enum.reduce(lines_with_indentation, [], fn
-        {"", _indentation}, lines ->
-          [nest(line(), :reset) | lines]
+    # the first line does not count for indentation purposes:
+    # <script>var foo = bar
+    # then get the minimum indentation value
+    indentation =
+      lines
+      |> Enum.drop(1)
+      |> Enum.map(&count_indentation(&1, 0))
+      |> Enum.min(fn -> :infinity end)
+      |> case do
+        :infinity -> 0
+        min -> min
+      end
 
-        {line, _indentation}, lines ->
-          # TODO: put the indentation back.
-          # line = binary_part(line, indentation, max(0, byte_size(line) - indentation))
-          [line(), string(line) | lines]
-      end)
-
-    {:inline, lines |> tl() |> Enum.reverse() |> concat()}
+    {:inline,
+     lines
+     |> trim_new_lines()
+     |> Enum.map(&remove_indentation(&1, indentation))
+     |> text_to_algebra(0, [])}
   end
 
   # Handle Text within other tags.
@@ -358,16 +360,15 @@ defmodule HeexFormatter.Formatter do
 
   defp pop_head_if_only_spaces_or_newlines(block), do: {block, false}
 
-  defp count_spaces_and_tabs(binary, counter \\ 0)
+  defp count_indentation(<<?\t, rest::binary>>, indent), do: count_indentation(rest, indent + 2)
+  defp count_indentation(<<?\s, rest::binary>>, indent), do: count_indentation(rest, indent + 1)
+  defp count_indentation(<<>>, _indent), do: :infinity
+  defp count_indentation(_, indent), do: indent
 
-  defp count_spaces_and_tabs(<<?\t, rest::binary>>, counter),
-    do: count_spaces_and_tabs(rest, counter + 2)
-
-  defp count_spaces_and_tabs(<<?\s, rest::binary>>, counter),
-    do: count_spaces_and_tabs(rest, counter + 1)
-
-  defp count_spaces_and_tabs(_, counter),
-    do: counter
+  defp remove_indentation(rest, 0), do: rest
+  defp remove_indentation(<<?\t, rest::binary>>, indent), do: remove_indentation(rest, indent - 2)
+  defp remove_indentation(<<?\s, rest::binary>>, indent), do: remove_indentation(rest, indent - 1)
+  defp remove_indentation(rest, _indent), do: rest
 
   defp trim_new_lines(lines) do
     lines

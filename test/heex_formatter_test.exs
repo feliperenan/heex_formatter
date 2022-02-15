@@ -923,14 +923,13 @@ defmodule HeexFormatterTest do
 
     text
       <div><script>
-        const foo = 1;
-        const map = {
-          a: 1,
-          b: 2,
-        }
-        console.log(foo);
-      </script></div>
-
+    const foo = 1;
+    const map = {
+      a: 1,
+      b: 2,
+    };
+    console.log(foo);
+    </script></div>
     </body>
     """
 
@@ -944,6 +943,44 @@ defmodule HeexFormatterTest do
             a: 1,
             b: 2,
           };
+          console.log(foo);
+        </script>
+      </div>
+    </body>
+    """
+
+    assert_formatter_output(input, expected)
+
+    input = """
+    <body>
+
+    text
+      <div><script>
+    \t\tconst foo = 1;
+    \s\s
+        const map = {
+          a: 1,
+          b: 2,
+        };
+    \t
+    \s\s\s\sconsole.log(foo);
+      </script></div>
+
+    </body>
+    """
+
+    expected = """
+    <body>
+      text
+      <div>
+        <script>
+          const foo = 1;
+
+          const map = {
+            a: 1,
+            b: 2,
+          };
+
           console.log(foo);
         </script>
       </div>
