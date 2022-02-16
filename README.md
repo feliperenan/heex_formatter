@@ -8,6 +8,11 @@ A code formatter for Heex templates.
 
 ![](examples/example.gif)
 
+### Pre-requisites
+
+* Elixir 1.13
+* Phoenix Live View 1.17.7
+
 ### Installation
 
 add `:heex_formatter` as dependency

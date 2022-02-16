@@ -98,8 +98,10 @@ defmodule HeexFormatter do
   </seciton>
   ```
 
+  ### Intentional new lines
+
   The formatter will keep intentional new lines. In fact, the formatter will
-  always keep one line in case you have inserted multiple ones:
+  always keep one line in case you have multiple ones:
 
   ```eex
   <section>
@@ -112,7 +114,7 @@ defmodule HeexFormatter do
   </section>
   ```
 
-  Will remove the extra line between `section` and `h1` tag keeping just one.
+  Will become:
 
   ```eex
   <section>
@@ -122,9 +124,29 @@ defmodule HeexFormatter do
     </h1>
 
   </section>
+  ```
+
+  We don't keep multiple lines on texts either:
+
+  ```
+  <p>
+    text
+
+
+    text
+  </p>
+  ```
+
+  Will be formatted to:
+
+  ```
+  <p>
+    text
+
+    text
+  </p>
   ```
   """
-
   alias Phoenix.LiveView.HTMLTokenizer
   alias HeexFormatter.Algebra
 
