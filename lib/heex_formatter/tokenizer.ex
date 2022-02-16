@@ -33,6 +33,7 @@ defmodule HeexFormatter.Tokenizer do
   def tokenize(contents) do
     {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 0, 0, %{indentation: 0, trim: false})
     {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
+
     HTMLTokenizer.finalize(tokens, "nofile", cont)
   end
 

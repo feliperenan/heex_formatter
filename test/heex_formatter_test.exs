@@ -918,167 +918,149 @@ defmodule HeexFormatterTest do
   end
 
   test "formats script tag" do
-    input = """
-    <body>
+    assert_formatter_output(
+      """
+      <body>
 
-    text
-      <div><script>
-    const foo = 1;
-    const map = {
-      a: 1,
-      b: 2,
-    };
-    console.log(foo);
-    </script></div>
-    </body>
-    """
-
-    expected = """
-    <body>
       text
-      <div>
-        <script>
-          const foo = 1;
-          const map = {
-            a: 1,
-            b: 2,
-          };
-          console.log(foo);
-        </script>
-      </div>
-    </body>
-    """
-
-    assert_formatter_output(input, expected)
-
-    input = """
-    <body>
-
-    text
-      <div><script>
-    \t\tconst foo = 1;
-    \s\s
-        const map = {
-          a: 1,
-          b: 2,
-        };
-    \t
-    \s\s\s\sconsole.log(foo);
+        <div><script>
+      const foo = 1;
+      const map = {
+        a: 1,
+        b: 2,
+      };
+      console.log(foo);
       </script></div>
+      </body>
+      """,
+      """
+      <body>
+        text
+        <div>
+          <script>
+            const foo = 1;
+            const map = {
+              a: 1,
+              b: 2,
+            };
+            console.log(foo);
+          </script>
+        </div>
+      </body>
+      """
+    )
 
-    </body>
-    """
+    assert_formatter_output(
+      """
+      <body>
 
-    expected = """
-    <body>
       text
-      <div>
-        <script>
-          const foo = 1;
-
+        <div><script>
+      \t\tconst foo = 1;
+      \s\s
           const map = {
             a: 1,
             b: 2,
           };
+      \t
+      \s\s\s\sconsole.log(foo);
+        </script></div>
 
-          console.log(foo);
-        </script>
-      </div>
-    </body>
+      </body>
+      """,
+      """
+      <body>
+        text
+        <div>
+          <script>
+            const foo = 1;
+
+            const map = {
+              a: 1,
+              b: 2,
+            };
+
+            console.log(foo);
+          </script>
+        </div>
+      </body>
+      """
+    )
+  end
+
+  test "formats eex within script tag" do
+    input = """
+    <script>
+      var foo = 1;
+      var bar = <%= @bar %>
+      var baz = <%= @baz %>
+      console.log(1)
+    </script>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
+
+  test "formats style tag" do
+    input = """
+    <div>
+    <style>
+    h1 {
+      font-weight: 900;
+    }
+    </style>
+    </div>
+    """
+
+    expected = """
+    <div>
+      <style>
+        h1 {
+          font-weight: 900;
+        }
+      </style>
+    </div>
     """
 
     assert_formatter_output(input, expected)
   end
 
-  # test "handle HTML comments but doens't format it" do
-  #   input = """
-  #       <!-- Inline comment -->
-  #   <section>
-  #     <!-- commenting out this div
-  #     <div>
-  #       <p><%= @user.name %></p>
-  #       <p
-  #         class="my-class">
-  #         text
-  #       </p>
-  #     </div>
-  #        -->
-  #   </section>
-  #   """
+  test "handle HTML comments but doens't format it" do
+    # input = """
+    #     <!-- Inline comment -->
+    # <section>
+    #   <!-- commenting out this div
+    #   <div>
+    #     <p><%= @user.name %></p>
+    #     <p
+    #       class="my-class">
+    #       text
+    #     </p>
+    #   </div>
+    #      -->
+    # </section>
+    # """
 
-  #   expected = """
-  #       <!-- Inline comment -->
-  #   <section>
-  #     <!-- commenting out this div
-  #     <div>
-  #       <p><%= @user.name %></p>
-  #       <p
-  #         class="my-class">
-  #         text
-  #       </p>
-  #     </div>
-  #        -->
-  #   </section>
-  #   """
+    # expected = """
+    # <!-- Inline comment -->
+    # <section>
+    #   <!-- commenting out this div
+    #   <div>
+    #     <p><%= @user.name %></p>
+    #     <p
+    #       class="my-class">
+    #       text
+    #     </p>
+    #   </div>
+    #      -->
+    # </section>
+    # """
 
-  #   assert_formatter_output(input, expected)
-  # end
+    # assert_formatter_output(input, expected)
 
-  # test "handle multiple comments in a row" do
-  #   input = """
-  #   <div><p>Hello</p></div>
-  #         <!-- <%= 1 %> --><!-- <%= 2 %> -->
-  #         <div><p>Hello</p></div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <p>Hello</p>
-  #   </div>
-  #         <!-- <%= 1 %> --><!-- <%= 2 %> -->
-  #   <div>
-  #     <p>Hello</p>
-  #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "put eex in the next line when it comes right after a HTML comment" do
-  #   input = """
-  #   <!-- Modal content -->
-  #   <%= render_slot(@inner_block) %>
-  #   """
-
-  #   expected = """
-  #   <!-- Modal content -->
-  #   <%= render_slot(@inner_block) %>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
-
-  # test "handle style tags but don't touch CSS code" do
-  #   input = """
-  #   <div>
-  #   <style>
-  #   h1 {
-  #     font-weight: 900;
-  #   }
-  #   </style>
-  #   </div>
-  #   """
-
-  #   expected = """
-  #   <div>
-  #     <style>
-  #   h1 {
-  #     font-weight: 900;
-  #   }
-  #     </style>
-  #   </div>
-  #   """
-
-  #   assert_formatter_output(input, expected)
-  # end
+    assert_formatter_doesnt_change("""
+    <!-- Modal content -->
+    <%= render_slot(@inner_block) %>
+    """)
+  end
 end

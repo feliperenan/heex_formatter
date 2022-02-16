@@ -98,9 +98,28 @@ defmodule HeexFormatter.HtmlTree do
     Enum.reverse(buffer)
   end
 
+  defp build([{:text, text, %{context: [:comment_start]}} | tokens], buffer, stack) do
+    build(tokens, [], [{:comment, text, buffer} | stack])
+  end
+
+  defp build([{:text, text, %{context: [:comment_end]}} | tokens], buffer, [
+         {:comment, start_text, upper_buffer} | stack
+       ]) do
+    comment_block = {:comment_block, start_text, Enum.reverse([{:text, text, %{}} | buffer])}
+    build(tokens, [comment_block | upper_buffer], stack)
+  end
+
+  defp build([{:text, text, %{context: [:comment_start, :comment_end]}} | tokens], buffer, stack) do
+    build(tokens, [{:comment, text} | buffer], stack)
+  end
+
   defp build([{:text, text, _meta} | tokens], buffer, stack) do
-    meta = %{newlines: count_newlines_until_text(text, 0)}
-    build(tokens, [{:text, text, meta} | buffer], stack)
+    if inline_comment?(text) do
+      build(tokens, [{:comment, text} | buffer], stack)
+    else
+      meta = %{newlines: count_newlines_until_text(text, 0)}
+      build(tokens, [{:text, text, meta} | buffer], stack)
+    end
   end
 
   defp build([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do
@@ -166,4 +185,11 @@ defmodule HeexFormatter.HtmlTree do
 
   defp count_newlines_until_text(_, counter),
     do: counter
+
+  # This is because LV Tokenizer does tell us if that is a inline comment and,
+  # we need to know that in order to handle this.
+  defp inline_comment?(text) do
+    trimmed_text = String.trim(text)
+    String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
+  end
 end

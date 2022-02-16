@@ -98,6 +98,12 @@ defmodule HeexFormatter.Formatter do
     |> group()
   end
 
+  defp to_algebra({:comment_block, start, block}, context, opts) do
+    children = block_to_algebra(block, %{context | mode: :comment, tag: "pre"}, opts)
+    doc = group(concat(start, nest(children, :reset)))
+    {:inline, doc}
+  end
+
   defp to_algebra({:tag_block, "pre", attrs, block}, context, opts) do
     children = block_to_algebra(block, %{context | mode: :pre, tag: "pre"}, opts)
 
@@ -116,30 +122,20 @@ defmodule HeexFormatter.Formatter do
 
   defp to_algebra({:tag_block, name, attrs, block}, %{mode: :pre} = context, opts) do
     children = block_to_algebra(block, %{context | mode: :pre, tag: name}, opts)
-
-    group =
-      concat([
-        "<#{name}",
-        build_attrs(attrs, opts),
-        ">",
-        children,
-        "</#{name}>"
-      ])
-
-    {:inline, group}
+    {:inline, concat(["<#{name}", build_attrs(attrs, opts), ">", children, "</#{name}>"])}
   end
 
   defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
     {block, force_newline?} = trim_block_newlines(block)
-    document = block_to_algebra(block, %{context | tag: name}, opts)
-    document = if force_newline?, do: force_unfit(document), else: document
+    children = block_to_algebra(block, %{context | tag: name}, opts)
+    children = if force_newline?, do: force_unfit(children), else: children
 
     group =
       concat([
         "<#{name}",
         build_attrs(attrs, opts),
         ">",
-        nest(concat(break(""), document), 2),
+        nest(concat(break(""), children), 2),
         break(""),
         "</#{name}>"
       ])
@@ -159,7 +155,8 @@ defmodule HeexFormatter.Formatter do
   # Handle EEX blocks within `pre` tag
   #
   # TODO: add examples as docs.
-  defp to_algebra({:eex_block, expr, block}, %{mode: :pre} = context, opts) do
+  defp to_algebra({:eex_block, expr, block}, %{mode: mode} = context, opts)
+       when mode in ~w(pre comment)a do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
         context = %{context | tag: :eex_block}
@@ -192,7 +189,8 @@ defmodule HeexFormatter.Formatter do
   end
 
   # Handle Text within <pre> tag.
-  defp to_algebra({:text, text, _meta}, %{mode: :pre}, _opts) when is_binary(text) do
+  defp to_algebra({:text, text, _meta}, %{mode: mode}, _opts)
+       when is_binary(text) and mode in ~w(pre comment)a do
     {:inline,
      text
      |> String.split(["\r\n", "\n"])
@@ -223,7 +221,8 @@ defmodule HeexFormatter.Formatter do
      lines
      |> trim_new_lines()
      |> Enum.map(&remove_indentation(&1, indentation))
-     |> text_to_algebra(0, [])}
+     |> text_to_algebra(0, [])
+     |> force_unfit()}
   end
 
   # Handle Text within other tags.
@@ -238,6 +237,11 @@ defmodule HeexFormatter.Formatter do
        |> Enum.drop_while(&(&1 == ""))
        |> text_to_algebra(0, [])}
     end
+  end
+
+  # Handle comment start and end in the same line: <!-- comment -->
+  defp to_algebra({:comment, text}, _context, _opts) when is_binary(text) do
+    {:block, text |> String.trim() |> string()}
   end
 
   # Empty newline
