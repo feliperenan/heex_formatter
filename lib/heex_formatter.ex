@@ -147,8 +147,8 @@ defmodule HeexFormatter do
   </p>
   ```
   """
-  alias Phoenix.LiveView.HTMLTokenizer
   alias HeexFormatter.Algebra
+  alias Phoenix.LiveView.HTMLTokenizer
 
   # Default line length to be used in case nothing is given to the formatter as
   # options.

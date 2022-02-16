@@ -1026,37 +1026,37 @@ defmodule HeexFormatterTest do
   end
 
   test "handle HTML comments but doens't format it" do
-    # input = """
-    #     <!-- Inline comment -->
-    # <section>
-    #   <!-- commenting out this div
-    #   <div>
-    #     <p><%= @user.name %></p>
-    #     <p
-    #       class="my-class">
-    #       text
-    #     </p>
-    #   </div>
-    #      -->
-    # </section>
-    # """
+    input = """
+        <!-- Inline comment -->
+    <section>
+      <!-- commenting out this div
+      <div>
+        <p><%= @user.name %></p>
+        <p
+          class="my-class">
+          text
+        </p>
+      </div>
+         -->
+    </section>
+    """
 
-    # expected = """
-    # <!-- Inline comment -->
-    # <section>
-    #   <!-- commenting out this div
-    #   <div>
-    #     <p><%= @user.name %></p>
-    #     <p
-    #       class="my-class">
-    #       text
-    #     </p>
-    #   </div>
-    #      -->
-    # </section>
-    # """
+    expected = """
+    <!-- Inline comment -->
+    <section>
+      <!-- commenting out this div
+      <div>
+        <p><%= @user.name %></p>
+        <p
+          class="my-class">
+          text
+        </p>
+      </div>
+         -->
+    </section>
+    """
 
-    # assert_formatter_output(input, expected)
+    assert_formatter_output(input, expected)
 
     assert_formatter_doesnt_change("""
     <!-- Modal content -->
