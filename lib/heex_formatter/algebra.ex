@@ -1,11 +1,7 @@
-defmodule HeexFormatter.Formatter do
+defmodule HeexFormatter.Algebra do
   @moduledoc false
 
   import Inspect.Algebra, except: [format: 2]
-
-  # Default line length to be used in case nothing is given to the formatter as
-  # options.
-  @default_line_length 98
 
   # Reference for all inline elements so that we can tell the formatter to not
   # force a line break. This list has been taken from here:
@@ -38,40 +34,33 @@ defmodule HeexFormatter.Formatter do
       iex> HeexFormatter.format(tree, [])
       ""
   """
-  def format(tree, opts) when is_list(tree) do
-    line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
-
-    formatted =
-      tree
-      # TODO: remove :tag
-      |> block_to_algebra(%{mode: :normal, tag: nil}, opts)
-      |> group()
-      |> Inspect.Algebra.format(line_length)
-
-    [formatted, ?\n]
+  def build(tree, opts) when is_list(tree) do
+    tree
+    |> block_to_algebra(%{mode: :normal, opts: opts})
+    |> group()
   end
 
-  defp block_to_algebra([], _context, _opts), do: empty()
+  defp block_to_algebra([], _opts), do: empty()
 
-  defp block_to_algebra(block, %{mode: :pre} = context, opts) do
+  defp block_to_algebra(block, %{mode: :pre} = context) do
     block
     |> Enum.reduce(empty(), fn node, doc ->
-      {_type, next_doc} = to_algebra(node, context, opts)
+      {_type, next_doc} = to_algebra(node, context)
       concat(doc, next_doc)
     end)
     |> group()
   end
 
-  defp block_to_algebra([head | tail], context, opts) do
+  defp block_to_algebra([head | tail], context) do
     initial =
       head
-      |> to_algebra(context, opts)
+      |> to_algebra(context)
       |> maybe_force_unfit()
 
     Enum.reduce(tail, initial, fn node, {prev_type, prev_doc} ->
       {next_type, next_doc} =
         node
-        |> to_algebra(context, opts)
+        |> to_algebra(context)
         |> maybe_force_unfit()
 
       cond do
@@ -98,19 +87,19 @@ defmodule HeexFormatter.Formatter do
     |> group()
   end
 
-  defp to_algebra({:comment_block, start, block}, context, opts) do
-    children = block_to_algebra(block, %{context | mode: :comment, tag: "pre"}, opts)
+  defp to_algebra({:comment_block, start, block}, context) do
+    children = block_to_algebra(block, %{context | mode: :comment})
     doc = group(concat(start, nest(children, :reset)))
     {:inline, doc}
   end
 
-  defp to_algebra({:tag_block, "pre", attrs, block}, context, opts) do
-    children = block_to_algebra(block, %{context | mode: :pre, tag: "pre"}, opts)
+  defp to_algebra({:tag_block, "pre", attrs, block}, context) do
+    children = block_to_algebra(block, %{context | mode: :pre})
 
     tag =
       concat([
         "<pre",
-        build_attrs(attrs, opts),
+        build_attrs(attrs, context.opts),
         ">",
         nest(children, :reset),
         "</pre>"
@@ -120,20 +109,21 @@ defmodule HeexFormatter.Formatter do
     {:block, tag}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, %{mode: :pre} = context, opts) do
-    children = block_to_algebra(block, %{context | mode: :pre, tag: name}, opts)
-    {:inline, concat(["<#{name}", build_attrs(attrs, opts), ">", children, "</#{name}>"])}
+  defp to_algebra({:tag_block, name, attrs, block}, %{mode: :pre} = context) do
+    children = block_to_algebra(block, %{context | mode: :pre})
+    {:inline, concat(["<#{name}", build_attrs(attrs, context.opts), ">", children, "</#{name}>"])}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, context, opts) do
+  defp to_algebra({:tag_block, name, attrs, block}, context) do
+    context = set_context(context, name)
     {block, force_newline?} = trim_block_newlines(block)
-    children = block_to_algebra(block, %{context | tag: name}, opts)
+    children = block_to_algebra(block, context)
     children = if force_newline?, do: force_unfit(children), else: children
 
     group =
       concat([
         "<#{name}",
-        build_attrs(attrs, opts),
+        build_attrs(attrs, context.opts),
         ">",
         nest(concat(break(""), children), 2),
         break(""),
@@ -148,19 +138,16 @@ defmodule HeexFormatter.Formatter do
     end
   end
 
-  defp to_algebra({:tag_self_close, name, attrs}, _context, opts) do
-    {:block, group(concat(["<#{name}", build_attrs(attrs, opts), " />"]))}
+  defp to_algebra({:tag_self_close, name, attrs}, context) do
+    {:block, group(concat(["<#{name}", build_attrs(attrs, context.opts), " />"]))}
   end
 
   # Handle EEX blocks within `pre` tag
-  #
-  # TODO: add examples as docs.
-  defp to_algebra({:eex_block, expr, block}, %{mode: mode} = context, opts)
+  defp to_algebra({:eex_block, expr, block}, %{mode: mode} = context)
        when mode in ~w(pre comment)a do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
-        context = %{context | tag: :eex_block}
-        children = concat(break(""), block_to_algebra(block, context, opts))
+        children = concat(break(""), block_to_algebra(block, context))
         expr = concat(break(""), "<% #{expr} %>")
         concat(doc, concat(children, expr))
       end)
@@ -169,27 +156,24 @@ defmodule HeexFormatter.Formatter do
   end
 
   # Handle EEX blocks
-  #
-  # TODO: add examples as docs.
-  defp to_algebra({:eex_block, expr, block}, context, opts) do
+  defp to_algebra({:eex_block, expr, block}, context) do
     {doc, _stab} =
       Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
         {block, _force_newline?} = trim_block_newlines(block)
-        context = %{context | tag: :eex_block}
-        {next_doc, stab?} = eex_block_to_algebra(expr, block, stab?, context, opts)
+        {next_doc, stab?} = eex_block_to_algebra(expr, block, stab?, context)
         {concat(doc, force_unfit(next_doc)), stab?}
       end)
 
     {:block, group(concat("<%= #{expr} %>", doc))}
   end
 
-  defp to_algebra({:eex, text, %{opt: opt} = meta}, _context, opts) do
-    doc = expr_to_code_algebra(text, meta, opts)
+  defp to_algebra({:eex, text, %{opt: opt} = meta}, context) do
+    doc = expr_to_code_algebra(text, meta, context.opts)
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
   # Handle Text within <pre> tag.
-  defp to_algebra({:text, text, _meta}, %{mode: mode}, _opts)
+  defp to_algebra({:text, text, _meta}, %{mode: mode})
        when is_binary(text) and mode in ~w(pre comment)a do
     {:inline,
      text
@@ -199,8 +183,8 @@ defmodule HeexFormatter.Formatter do
   end
 
   # Handle Text within <script> tag.
-  defp to_algebra({:text, text, _meta}, %{tag: tag}, _opts)
-       when is_binary(text) and tag in ~w(script style) do
+  defp to_algebra({:text, text, _meta}, %{mode: mode})
+       when is_binary(text) and mode in ~w(script style)a do
     # start with all lines
     lines = String.split(text, ["\r\n", "\n"])
 
@@ -226,7 +210,7 @@ defmodule HeexFormatter.Formatter do
   end
 
   # Handle Text within other tags.
-  defp to_algebra({:text, text, _meta} = node, _context, _opts) when is_binary(text) do
+  defp to_algebra({:text, text, _meta} = node, _context) when is_binary(text) do
     if newline?(node) do
       {:newline, empty()}
     else
@@ -240,7 +224,7 @@ defmodule HeexFormatter.Formatter do
   end
 
   # Handle comment start and end in the same line: <!-- comment -->
-  defp to_algebra({:comment, text}, _context, _opts) when is_binary(text) do
+  defp to_algebra({:comment, text}, _context) when is_binary(text) do
     {:block, text |> String.trim() |> string()}
   end
 
@@ -296,7 +280,7 @@ defmodule HeexFormatter.Formatter do
   # Handle cond/case first clause.
   #
   # {[], "something ->"}
-  defp eex_block_to_algebra(expr, [], _stab?, _context, _opts) do
+  defp eex_block_to_algebra(expr, [], _stab?, _context) do
     {break("")
      |> concat("<% #{expr} %>")
      |> nest(2), true}
@@ -305,12 +289,12 @@ defmodule HeexFormatter.Formatter do
   # Handle Eex else, end and case/cond expressions.
   #
   # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
-  defp eex_block_to_algebra(expr, block, stab?, context, opts) when is_list(block) do
+  defp eex_block_to_algebra(expr, block, stab?, context) when is_list(block) do
     indent = if stab?, do: 4, else: 2
 
     document =
       break("")
-      |> concat(block_to_algebra(block, context, opts))
+      |> concat(block_to_algebra(block, context))
       |> nest(indent)
 
     stab? = String.ends_with?(expr, "->")
@@ -380,5 +364,13 @@ defmodule HeexFormatter.Formatter do
     |> Enum.reverse()
     |> Enum.drop_while(&(String.trim_leading(&1) == ""))
     |> Enum.reverse()
+  end
+
+  defp set_context(context, tag_name) do
+    if tag_name in ~w(script style) and context.mode != :pre do
+      %{context | mode: String.to_atom(tag_name)}
+    else
+      context
+    end
   end
 end
