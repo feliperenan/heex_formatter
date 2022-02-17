@@ -111,7 +111,9 @@ defmodule HeexFormatter.Algebra do
 
   defp to_algebra({:tag_block, name, attrs, block}, %{mode: :pre} = context) do
     children = block_to_algebra(block, %{context | mode: :pre})
-    {:inline, concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
+
+    {:inline,
+     concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
   end
 
   defp to_algebra({:tag_block, name, attrs, block}, context) do
@@ -121,7 +123,7 @@ defmodule HeexFormatter.Algebra do
     children =
       case block do
         [] -> empty()
-        _ ->  nest(concat(break(""), block_to_algebra(block, context)), 2)
+        _ -> nest(concat(break(""), block_to_algebra(block, context)), 2)
       end
 
     children = if force_newline?, do: force_unfit(children), else: children
