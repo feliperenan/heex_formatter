@@ -172,7 +172,12 @@ defmodule HeexFormatter do
       |> Algebra.build(opts)
       |> Inspect.Algebra.format(line_length)
 
-    IO.iodata_to_binary([formatted, ?\n])
+    # If the opening delimiter is a single character, such as ~H"...",
+    # do not add trailing newline.
+    newline = if match?(<<_>>, opts[:opening_delimiter]), do: [], else: ?\n
+
+    # TODO: Remove IO.iodata_to_binary/1 call on Elixir v1.14+
+    IO.iodata_to_binary([formatted, newline])
   end
 
   # Tokenize contents using EEx.Tokenizer and Phoenix.Live.HTMLTokenizer respectively.
