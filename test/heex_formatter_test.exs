@@ -668,7 +668,7 @@ defmodule HeexFormatterTest do
           action={@live_action}
           product={@product}
           return_to={Routes.store_index_path(@socket, :index)}
-         />
+        />
       </.modal>
     <% end %>
     """
@@ -694,7 +694,7 @@ defmodule HeexFormatterTest do
         rel="shortcut icon"
         href={Routes.static_path(@conn, "/images/favicon.png")}
         type="image/x-icon"
-       />
+      />
       <p>some text</p>
       <br />
       <hr />
@@ -728,7 +728,7 @@ defmodule HeexFormatterTest do
         |> focus_closest("#song-1")
         |> hide("#song-1")
       }
-     />
+    />
     """
 
     assert_formatter_output(input, expected)

@@ -99,7 +99,7 @@ defmodule HeexFormatter.Algebra do
     tag =
       concat([
         "<pre",
-        build_attrs(attrs, context.opts),
+        build_attrs(attrs, "", context.opts),
         ">",
         nest(children, :reset),
         "</pre>"
@@ -111,7 +111,7 @@ defmodule HeexFormatter.Algebra do
 
   defp to_algebra({:tag_block, name, attrs, block}, %{mode: :pre} = context) do
     children = block_to_algebra(block, %{context | mode: :pre})
-    {:inline, concat(["<#{name}", build_attrs(attrs, context.opts), ">", children, "</#{name}>"])}
+    {:inline, concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
   end
 
   defp to_algebra({:tag_block, name, attrs, block}, context) do
@@ -123,7 +123,7 @@ defmodule HeexFormatter.Algebra do
     group =
       concat([
         "<#{name}",
-        build_attrs(attrs, context.opts),
+        build_attrs(attrs, "", context.opts),
         ">",
         nest(concat(break(""), children), 2),
         break(""),
@@ -139,7 +139,7 @@ defmodule HeexFormatter.Algebra do
   end
 
   defp to_algebra({:tag_self_close, name, attrs}, context) do
-    {:block, group(concat(["<#{name}", build_attrs(attrs, context.opts), " />"]))}
+    {:block, group(concat(["<#{name}", build_attrs(attrs, " ", context.opts), "/>"]))}
   end
 
   # Handle EEX blocks within `pre` tag
@@ -251,13 +251,13 @@ defmodule HeexFormatter.Algebra do
   defp text_to_algebra([], _, acc),
     do: acc |> Enum.reverse() |> tl() |> concat() |> force_unfit()
 
-  defp build_attrs([], _opts), do: empty()
+  defp build_attrs([], on_break, _opts), do: on_break
 
-  defp build_attrs(attrs, opts) do
+  defp build_attrs(attrs, on_break, opts) do
     attrs
     |> Enum.reduce(empty(), &concat([&2, break(" "), render_attribute(&1, opts)]))
     |> nest(2)
-    |> concat(break(""))
+    |> concat(break(on_break))
     |> group()
   end
 
