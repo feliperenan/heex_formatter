@@ -172,7 +172,7 @@ defmodule HeexFormatter do
       |> Algebra.build(opts)
       |> Inspect.Algebra.format(line_length)
 
-    [formatted, ?\n]
+    IO.iodata_to_binary([formatted, ?\n])
   end
 
   # Tokenize contents using EEx.Tokenizer and Phoenix.Live.HTMLTokenizer respectively.
