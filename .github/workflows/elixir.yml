@@ -33,6 +33,6 @@ jobs:
       - name: Lint
         run: |
           mix format --check-formatted
-          mix credo --strict
+          mix credo
       - name: Run tests
         run: mix test
