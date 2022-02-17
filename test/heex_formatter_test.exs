@@ -83,6 +83,25 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected, line_length: 20)
   end
 
+  test "break inline elements to the next line when it doesn't fit and element is empty" do
+    input = """
+      <section><h1><b class="there are several classes"></b></h1></section>
+    """
+
+    expected = """
+    <section>
+      <h1>
+        <b
+          class="there are several classes"
+        >
+        </b>
+      </h1>
+    </section>
+    """
+
+    assert_formatter_output(input, expected, line_length: 20)
+  end
+
   test "always break line for block elements" do
     input = """
     <h1>1</h1>

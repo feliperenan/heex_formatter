@@ -117,7 +117,13 @@ defmodule HeexFormatter.Algebra do
   defp to_algebra({:tag_block, name, attrs, block}, context) do
     context = set_context(context, name)
     {block, force_newline?} = trim_block_newlines(block)
-    children = block_to_algebra(block, context)
+
+    children =
+      case block do
+        [] -> empty()
+        _ ->  nest(concat(break(""), block_to_algebra(block, context)), 2)
+      end
+
     children = if force_newline?, do: force_unfit(children), else: children
 
     group =
@@ -125,7 +131,7 @@ defmodule HeexFormatter.Algebra do
         "<#{name}",
         build_attrs(attrs, "", context.opts),
         ">",
-        nest(concat(break(""), children), 2),
+        children,
         break(""),
         "</#{name}>"
       ])
