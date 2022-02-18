@@ -155,9 +155,9 @@ defmodule HeexFormatter.Algebra do
        when mode in ~w(pre comment)a do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
-        children = concat(break(""), block_to_algebra(block, context))
-        expr = concat(break(""), "<% #{expr} %>")
-        concat(doc, concat(children, expr))
+        children = block_to_algebra(block, context)
+        expr = "<% #{expr} %>"
+        concat([doc, children, expr])
       end)
 
     {:block, group(concat("<%= #{expr} %>", doc))}
@@ -285,31 +285,28 @@ defmodule HeexFormatter.Algebra do
   defp render_attribute({attr, {_, value, _meta}}, _opts), do: ~s(#{attr}=#{value})
   defp render_attribute({attr, nil}, _opts), do: ~s(#{attr})
 
-  # Handle cond/case first clause.
+  # Handle EEx clauses
   #
   # {[], "something ->"}
-  defp eex_block_to_algebra(expr, [], _stab?, _context) do
-    stab? = String.ends_with?(expr, "->")
-    doc = concat(break(""), "<% #{expr} %>")
-    if stab?, do: {nest(doc, 2), stab?}, else: {doc, stab?}
-  end
-
-  # Handle Eex else, end and case/cond expressions.
-  #
   # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
   defp eex_block_to_algebra(expr, block, stab?, context) when is_list(block) do
     indent = if stab?, do: 4, else: 2
 
     document =
-      break("")
-      |> concat(block_to_algebra(block, context))
-      |> nest(indent)
+      # The first clause in cond/case and general empty clauses.
+      if block == [] do
+        empty()
+      else
+        line()
+        |> concat(block_to_algebra(block, context))
+        |> nest(indent)
+      end
 
     stab? = String.ends_with?(expr, "->")
     indent = if stab?, do: 2, else: 0
 
     next =
-      break("")
+      line()
       |> concat("<% #{expr} %>")
       |> nest(indent)
 
