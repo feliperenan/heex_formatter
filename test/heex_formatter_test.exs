@@ -433,7 +433,7 @@ defmodule HeexFormatterTest do
       """,
       """
       <p>
-        $<%= @product.value %>in Dollars
+        $ <%= @product.value %> in Dollars
       </p>
       <button>
         Submit
@@ -456,11 +456,11 @@ defmodule HeexFormatterTest do
   test "format long lines splitting into multiple lines" do
     assert_formatter_output(
       """
-        <p><span>this is a long long long long long looooooong text</span><%= @product.value %> and more stuff over here</p>
+        <p><span>this is a long long long long long looooooong text</span> <%= @product.value %> and more stuff over here</p>
       """,
       """
       <p>
-        <span>this is a long long long long long looooooong text</span><%= @product.value %>
+        <span>this is a long long long long long looooooong text</span> <%= @product.value %>
         and more stuff over here
       </p>
       """
@@ -758,7 +758,7 @@ defmodule HeexFormatterTest do
     <section>
       <h1>
         <b>
-          <%= @user.first_name %><%= @user.last_name %>
+          <%= @user.first_name %> <%= @user.last_name %>
         </b>
       </h1>
 
@@ -1098,6 +1098,21 @@ defmodule HeexFormatterTest do
         something
       <% _ -> %>
     <% end %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "test" do
+    input = """
+    <p>
+            Last <%= length(@backlog_feeds) %> of <%= @feedcount %> backlog feeds </p>
+    """
+
+    expected = """
+    <p>
+      Last <%= length(@backlog_feeds) %> of <%= @feedcount %> backlog feeds
+    </p>
     """
 
     assert_formatter_output(input, expected)
