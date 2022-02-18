@@ -1082,4 +1082,24 @@ defmodule HeexFormatterTest do
     <%= render_slot(@inner_block) %>
     """)
   end
+
+  test "handle case end when previous block is blank" do
+    input = """
+    <%= case :foo do %>
+      <% :foo -> %>
+        something
+      <% _ -> %>
+      <% end %>
+    """
+
+    expected = """
+    <%= case :foo do %>
+      <% :foo -> %>
+        something
+      <% _ -> %>
+    <% end %>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end

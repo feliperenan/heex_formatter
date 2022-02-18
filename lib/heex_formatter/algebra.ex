@@ -289,9 +289,9 @@ defmodule HeexFormatter.Algebra do
   #
   # {[], "something ->"}
   defp eex_block_to_algebra(expr, [], _stab?, _context) do
-    {break("")
-     |> concat("<% #{expr} %>")
-     |> nest(2), true}
+    stab? = String.ends_with?(expr, "->")
+    doc = concat(break(""), "<% #{expr} %>")
+    if stab?, do: {nest(doc, 2), stab?}, else: {doc, stab?}
   end
 
   # Handle Eex else, end and case/cond expressions.
