@@ -12,28 +12,6 @@ defmodule HeexFormatter.Algebra do
   mark meter noscript object output picture progress q ruby s samp select slot
   small span strong sub sup svg template textarea time u tt var video wbr)
 
-  @doc """
-  Formats using `Inspect.Algebra` given an HTML tree built by `HTMLtree.build/1`.
-
-  ### Rules
-
-  ### Examples
-
-      iex> [
-      ...>   {:text, "Text only"},
-      ...>   {:tag_block, "p", [], [text: "some text"]},
-      ...>   {:tag_block, "section", [],
-      ...>    [
-      ...>      {:tag_block, "div", [],
-      ...>       [
-      ...>         {:tag_block, "h1", [], [text: "Hello"]},
-      ...>         {:tag_block, "h2", [], [text: "Word"]}
-      ...>       ]}
-      ...>    ]}
-      ...> ]
-      iex> HeexFormatter.format(tree, [])
-      ""
-  """
   def build(tree, opts) when is_list(tree) do
     tree
     |> block_to_algebra(%{mode: :normal, opts: opts})
@@ -52,40 +30,55 @@ defmodule HeexFormatter.Algebra do
   end
 
   defp block_to_algebra([head | tail], context) do
-    initial =
+    {type, doc} =
       head
       |> to_algebra(context)
       |> maybe_force_unfit()
 
-    Enum.reduce(tail, initial, fn node, {prev_type, prev_doc} ->
+    Enum.reduce(tail, {head, type, doc}, fn next_node, {prev_node, prev_type, prev_doc} ->
       {next_type, next_doc} =
-        node
+        next_node
         |> to_algebra(context)
         |> maybe_force_unfit()
 
       cond do
         prev_type == :inline and next_type == :inline ->
-          {next_type, concat([prev_doc, flex_break(""), next_doc])}
+          on_break =
+            if next_doc != empty() and
+                 context.mode !== :script and
+                 (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
+              " "
+            else
+              ""
+            end
+
+          {next_node, next_type, concat([prev_doc, flex_break(on_break), next_doc])}
 
         prev_type == :newline and next_type == :inline ->
-          {next_type, concat([prev_doc, line(), next_doc])}
+          {next_node, next_type, concat([prev_doc, line(), next_doc])}
 
         next_type == :newline ->
-          {:text, _text, %{newlines: newlines}} = node
+          {:text, _text, %{newlines: newlines}} = next_node
 
           if newlines > 1 do
-            {next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
+            {next_node, next_type, concat([prev_doc, nest(line(), :reset), next_doc])}
           else
-            {next_type, concat([prev_doc, next_doc])}
+            {next_node, next_type, concat([prev_doc, next_doc])}
           end
 
         true ->
-          {next_type, concat([prev_doc, break(""), next_doc])}
+          {next_node, next_type, concat([prev_doc, break(""), next_doc])}
       end
     end)
-    |> elem(1)
+    |> elem(2)
     |> group()
   end
+
+  defp text_starts_with_space?({:text, text, _meta}), do: String.starts_with?(text, " ")
+  defp text_starts_with_space?(_node), do: false
+
+  defp text_ends_with_space?({:text, text, _meta}), do: String.ends_with?(text, " ")
+  defp text_ends_with_space?(_node), do: false
 
   defp to_algebra({:comment_block, start, block}, context) do
     children = block_to_algebra(block, %{context | mode: :comment})
@@ -218,16 +211,21 @@ defmodule HeexFormatter.Algebra do
   end
 
   # Handle Text within other tags.
-  defp to_algebra({:text, text, _meta} = node, _context) when is_binary(text) do
-    if newline?(node) do
-      {:newline, empty()}
-    else
-      {:inline,
-       text
-       |> String.split(["\r\n", "\n"])
-       |> Enum.map(&String.trim/1)
-       |> Enum.drop_while(&(&1 == ""))
-       |> text_to_algebra(0, [])}
+  defp to_algebra({:text, text, _meta}, _context) when is_binary(text) do
+    cond do
+      only_spaces?(text) ->
+        {:inline, empty()}
+
+      String.trim_leading(text) == "" ->
+        {:newline, empty()}
+
+      true ->
+        {:inline,
+         text
+         |> String.split(["\r\n", "\n"])
+         |> Enum.map(&String.trim/1)
+         |> Enum.drop_while(&(&1 == ""))
+         |> text_to_algebra(0, [])}
     end
   end
 
@@ -330,8 +328,14 @@ defmodule HeexFormatter.Algebra do
     |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
   end
 
-  defp newline?({:text, text, _meta}), do: String.trim_leading(text) == ""
-  defp newline?(_node), do: false
+  def only_spaces?(text), do: only_spaces?(text, false)
+
+  def only_spaces?(<<char, rest::binary>>, _boolean) when char in [?\s, ?\t],
+    do: only_spaces?(rest, true)
+
+  def only_spaces?(<<char>>, _boolean) when char in [?\s, ?\t], do: true
+  def only_spaces?(<<>>, _boolean), do: true
+  def only_spaces?(_rest, _boolean), do: false
 
   defp maybe_force_unfit({:block, doc}), do: {:block, force_unfit(doc)}
   defp maybe_force_unfit(doc), do: doc
