@@ -293,8 +293,8 @@ defmodule HeexFormatter.Algebra do
     indent = if stab?, do: 4, else: 2
 
     document =
-      # The first clause in cond/case and general empty clauses.
       if block == [] do
+        # The first clause in cond/case and general empty clauses.
         empty()
       else
         line()
