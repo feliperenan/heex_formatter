@@ -1117,4 +1117,12 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle comment block with eex" do
+    assert_formatter_doesnt_change("""
+    <div></div>
+    <!-- <%= "comment" %> -->
+    <div></div>
+    """)
+  end
 end

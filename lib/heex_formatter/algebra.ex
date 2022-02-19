@@ -45,7 +45,7 @@ defmodule HeexFormatter.Algebra do
         prev_type == :inline and next_type == :inline ->
           on_break =
             if next_doc != empty() and
-                 context.mode !== :script and
+                 context.mode == :normal and
                  (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
               " "
             else
@@ -80,10 +80,9 @@ defmodule HeexFormatter.Algebra do
   defp text_ends_with_space?({:text, text, _meta}), do: String.ends_with?(text, " ")
   defp text_ends_with_space?(_node), do: false
 
-  defp to_algebra({:comment_block, start, block}, context) do
+  defp to_algebra({:comment_block, block}, context) do
     children = block_to_algebra(block, %{context | mode: :comment})
-    doc = group(concat(start, nest(children, :reset)))
-    {:inline, doc}
+    {block, group(nest(children, :reset))}
   end
 
   defp to_algebra({:tag_block, "pre", attrs, block}, context) do
