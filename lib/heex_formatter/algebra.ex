@@ -82,7 +82,7 @@ defmodule HeexFormatter.Algebra do
 
   defp to_algebra({:comment_block, block}, context) do
     children = block_to_algebra(block, %{context | mode: :comment})
-    {block, group(nest(children, :reset))}
+    {:block, group(nest(children, :reset))}
   end
 
   defp to_algebra({:tag_block, "pre", attrs, block}, context) do
@@ -211,14 +211,14 @@ defmodule HeexFormatter.Algebra do
 
   # Handle Text within other tags.
   defp to_algebra({:text, text, _meta}, _context) when is_binary(text) do
-    cond do
-      only_spaces?(text) ->
+    case classify_leading(text) do
+      :spaces ->
         {:inline, empty()}
 
-      String.trim_leading(text) == "" ->
+      :newline ->
         {:newline, empty()}
 
-      true ->
+      :other ->
         {:inline,
          text
          |> String.split(["\r\n", "\n"])
@@ -324,14 +324,14 @@ defmodule HeexFormatter.Algebra do
     |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
   end
 
-  def only_spaces?(text), do: only_spaces?(text, false)
+  def classify_leading(text), do: classify_leading(text, :spaces)
 
-  def only_spaces?(<<char, rest::binary>>, _boolean) when char in [?\s, ?\t],
-    do: only_spaces?(rest, true)
+  def classify_leading(<<char, rest::binary>>, mode) when char in [?\s, ?\t],
+    do: classify_leading(rest, mode)
 
-  def only_spaces?(<<char>>, _boolean) when char in [?\s, ?\t], do: true
-  def only_spaces?(<<>>, _boolean), do: true
-  def only_spaces?(_rest, _boolean), do: false
+  def classify_leading(<<?\n, rest::binary>>, _), do: classify_leading(rest, :newline)
+  def classify_leading(<<>>, mode), do: mode
+  def classify_leading(_rest, _), do: :other
 
   defp maybe_force_unfit({:block, doc}), do: {:block, force_unfit(doc)}
   defp maybe_force_unfit(doc), do: doc
