@@ -1,40 +1,14 @@
 defmodule HeexFormatterTest do
-  use ExUnit.Case
-  doctest HeexFormatter
+  use ExUnit.Case, async: true
 
-  alias Mix.Tasks.Format, as: MixFormat
-
-  # TODO: use string API on tests and have two or three integration tests
-  # Write a unique file and .formatter.exs for a test, run `mix format` on the
-  # file, and assert whether the input matches the expected output.
-  defp assert_formatter_output(input_ex, expected, dot_formatter_opts \\ []) do
-    filename = "index.html.heex"
-    ex_path = Path.join(System.tmp_dir(), filename)
-    dot_formatter_path = ex_path <> ".formatter.exs"
-    dot_formatter_opts = Keyword.put(dot_formatter_opts, :plugins, [HeexFormatter])
-
-    on_exit(fn ->
-      File.rm(ex_path)
-      File.rm(dot_formatter_path)
-    end)
-
-    File.write!(ex_path, input_ex)
-    File.write!(dot_formatter_path, inspect(dot_formatter_opts))
-
-    # Run mix format twice to make sure the formatted file doesn't change after
-    # another mix format.
-    formatted = run_formatter(ex_path, dot_formatter_path)
+  defp assert_formatter_output(input, expected, dot_formatter_opts \\ []) do
+    formatted = HeexFormatter.format(input, dot_formatter_opts)
     assert formatted == expected
-    assert run_formatter(ex_path, dot_formatter_path) == formatted
+    assert HeexFormatter.format(input, dot_formatter_opts) == formatted
   end
 
   def assert_formatter_doesnt_change(code, opts \\ []) do
     assert_formatter_output(code, code, opts)
-  end
-
-  defp run_formatter(ex_path, dot_formatter_path) do
-    MixFormat.run([ex_path, "--dot-formatter", dot_formatter_path])
-    File.read!(ex_path)
   end
 
   test "always break lines for block elements" do
