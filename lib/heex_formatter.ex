@@ -206,7 +206,7 @@ defmodule HeexFormatter do
   #   {:tag_close, "section", %{column: 1, line: 2}}
   # ]
   defp tokenize(contents) do
-    {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 0, 0, %{indentation: 0, trim: false})
+    {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 0, %{indentation: 0, trim: false})
     {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
     HTMLTokenizer.finalize(tokens, "nofile", cont)
   end
