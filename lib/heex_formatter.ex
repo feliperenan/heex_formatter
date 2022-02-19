@@ -331,7 +331,7 @@ defmodule HeexFormatter do
 
     to_tree(
       tokens,
-      [{:comment_block, [{:text, String.trim_leading(start_text), %{}} | buffer]} | upper_buffer],
+      [{:html_comment, [{:text, String.trim_leading(start_text), %{}} | buffer]} | upper_buffer],
       stack
     )
   end

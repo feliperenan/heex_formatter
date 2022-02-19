@@ -80,7 +80,7 @@ defmodule HeexFormatter.Algebra do
   defp text_ends_with_space?({:text, text, _meta}), do: String.ends_with?(text, " ")
   defp text_ends_with_space?(_node), do: false
 
-  defp to_algebra({:comment_block, block}, context) do
+  defp to_algebra({:html_comment, block}, context) do
     children = block_to_algebra(block, %{context | mode: :comment})
     {:block, group(nest(children, :reset))}
   end
