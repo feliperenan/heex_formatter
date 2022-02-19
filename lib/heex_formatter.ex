@@ -327,8 +327,13 @@ defmodule HeexFormatter do
   defp to_tree([{:text, text, %{context: [:comment_end]}} | tokens], buffer, [
          {:comment, start_text, upper_buffer} | stack
        ]) do
-    comment_block = {:comment_block, start_text, Enum.reverse([{:text, text, %{}} | buffer])}
-    to_tree(tokens, [comment_block | upper_buffer], stack)
+    buffer = Enum.reverse([{:text, String.trim_trailing(text), %{}} | buffer])
+
+    to_tree(
+      tokens,
+      [{:comment_block, [{:text, String.trim_leading(start_text), %{}} | buffer]} | upper_buffer],
+      stack
+    )
   end
 
   defp to_tree(
