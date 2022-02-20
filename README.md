@@ -39,6 +39,18 @@ Add it to your projects `.formatter.exs` file
 ]
 ```
 
+Get the dep
+
+```elixir
+mix deps.get
+```
+
+Compile
+
+```elixir
+mix compile
+```
+
 Now run
 
 ```elixir
