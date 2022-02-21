@@ -39,13 +39,13 @@ Add it to your projects `.formatter.exs` file
 ]
 ```
 
-Get the dep
+Get the deps
 
 ```elixir
 mix deps.get
 ```
 
-Compile
+Compile it
 
 ```elixir
 mix compile
