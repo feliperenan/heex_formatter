@@ -76,10 +76,14 @@ defmodule HeexFormatter.Algebra do
 
   @codepoints '\s\n\r\t'
 
-  defp text_starts_with_space?({:text, text, _meta}) when text != "", do: :binary.first(text) in @codepoints
+  defp text_starts_with_space?({:text, text, _meta}) when text != "",
+    do: :binary.first(text) in @codepoints
+
   defp text_starts_with_space?(_node), do: false
 
-  defp text_ends_with_space?({:text, text, _meta}) when text != "", do: :binary.last(text) in @codepoints
+  defp text_ends_with_space?({:text, text, _meta}) when text != "",
+    do: :binary.last(text) in @codepoints
+
   defp text_ends_with_space?(_node), do: false
 
   defp to_algebra({:html_comment, block}, context) do
