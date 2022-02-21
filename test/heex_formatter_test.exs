@@ -1099,4 +1099,21 @@ defmodule HeexFormatterTest do
     <div></div>
     """)
   end
+
+  test "handle spaces properly" do
+    input = """
+    <button>
+      <i class="fa-solid fa-xmark"></i>
+      Close
+    </button>
+    """
+
+    expected = """
+    <button>
+      <i class="fa-solid fa-xmark"></i> Close
+    </button>
+    """
+
+    assert_formatter_output(input, expected)
+  end
 end
