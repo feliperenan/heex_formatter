@@ -4,18 +4,18 @@
 
 A code formatter for Heex templates.
 
-:warning: This project is still in alpha stage. There are several cases yet to be handled.
+:warning: This project is still in the alpha stage. There are several cases yet to be handled.
 
-![](examples/example.gif)
+![Example animation](examples/example.gif)
 
-### Pre-requisites
+## Pre-requisites
 
 * Elixir 1.13
 * Phoenix Live View 1.17.7
 
-### Installation
+## Installation
 
-add `:heex_formatter` as dependency
+Add `:heex_formatter` as dependency in your `mix.exs` file.
 
 ```elixir
 defp deps do
@@ -26,7 +26,7 @@ defp deps do
 end
 ```
 
-Add it to your projects `.formatter.exs` file
+Add it as plugin to your project's `.formatter` file and make sure to put the `heex` extension in the `inputs` option.
 
 ```elixir
 [
@@ -39,31 +39,31 @@ Add it to your projects `.formatter.exs` file
 ]
 ```
 
-Get the deps
+Get the dependency.
 
 ```elixir
 mix deps.get
 ```
 
-Compile it
+Compile the project.
 
 ```elixir
 mix compile
 ```
 
-Now run
+Run the formatter.
 
 ```elixir
 mix format
 ```
 
-### options
+## Options
 
-#### line_length
+### line_length
 
-The formatter defaults to a maximum line_length of 98 characters, which can be overwritten with the `line_length` option in the `.formatter` file.
+The Elixir formatter defaults to a maximum line length of 98 characters, which can be overwritten with the `line_length` option in your `.formatter` file.
 
-Set `heex_line_length` to only set the line:length for the heex formatter.
+Set `heex_line_length` to only set the line length for the heex formatter.
 
 ```elixir
 [
