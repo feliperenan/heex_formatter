@@ -429,7 +429,7 @@ defmodule HeexFormatter do
   defp count_newlines_until_text(_, counter),
     do: counter
 
-  # LV Tokenizer doesn't tells us when it is an inline comment and we need to know that in order
+  # LV Tokenizer doesn't tell us when it is an inline comment and we need to know that in order
   # to handle this.
   defp inline_comment?(text) do
     trimmed_text = String.trim(text)
