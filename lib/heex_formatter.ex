@@ -8,7 +8,7 @@ defmodule HeexFormatter do
 
   ### Setup
 
-  add this project as a dependency in your `mix.exs`
+  Add this project as a dependency in your `mix.exs` file.
 
   defp deps do
     [
@@ -17,8 +17,8 @@ defmodule HeexFormatter do
     ]
   end
 
-  Add it as plugin to your project `.formatter` file and make sure to put the
-  `heex` extension in the `input` option.
+  Add it as plugin to your project `.formatter` file and make sure to put the`heex` extension in
+  the `inputs` option.
 
   ```elixir
   [
@@ -30,10 +30,10 @@ defmodule HeexFormatter do
 
   ### options
 
-  * `line_length`: The formatter defaults to a maximum line length of 98 characters,
-    which can be overwritten with the `line_length` option in the `.formatter` file.
+  * `line_length`: The Elixir formatter defaults to a maximum line length of 98 characters,
+    which can be overwritten with the `line_length` option in your `.formatter` file.
 
-    Set `heex_line_length` to only set the line:lenght for the heex formatter.
+    Set `heex_line_length` to only set the line length for the heex formatter.
 
     ```elixir
     [
@@ -44,16 +44,16 @@ defmodule HeexFormatter do
 
   ### Formatting
 
-  This formatter tries to be as consistency as possible with the Elixir formatter.
+  This formatter tries to be as consistent as possible with the Elixir formatter.
   With that being said, you should expect a similar formatting experience.
 
-  Given a plain HTML like this:
+  Given HTML like this:
 
   ```eex
     <section><h1>   <b>Hello</b></h1> </section>
   ```
 
-  Will be formatted as:
+  It will be formatted as:
 
   ```eex
   <section>
@@ -61,14 +61,15 @@ defmodule HeexFormatter do
   </section>
   ```
 
-  As you can see above, a block element will go to the next line while inline
-  elements will be kept in the current line as long as it fits in the configured
-  line length. In the link below you can see all block and inline elements.
+  A block element will go to the next line, while inline elements will be kept in the current line
+  as long as they fit within the configured line length.
+
+  The following links list all block and inline elements.
 
   https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements#elements
   https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
 
-  It keeps inline elements in the next line in case you write it this way:
+  It will also keep inline elements in their own lines if you intentionally write them this way:
 
   ```eex
   <section>
@@ -78,13 +79,15 @@ defmodule HeexFormatter do
   </section>
   ```
 
-  This formatter will break tags to the next line in case the tag attributes does
-  not fit in the current line. Therefore this:
+  This formatter will place all attributes on their own lines when they do not all fit in the
+  current line.
+
+  Therefore this:
 
   ```eex
   <section id="user-section-id" class="sm:focus:block flex w-full p-3" phx-click="send-event">
     <p>Hi</p>
-  </seciton>
+  </section>
   ```
 
   Will be formatted to:
@@ -95,13 +98,13 @@ defmodule HeexFormatter do
     class="sm:focus:block flex w-full p-3"
     phx-click="send-event">
     <p>Hi</p>
-  </seciton>
+  </section>
   ```
 
   ### Intentional new lines
 
   The formatter will keep intentional new lines. In fact, the formatter will
-  always keep one line in case you have multiple ones:
+  always keep a maximum of one line break in case you have multiple ones:
 
   ```eex
   <section>
@@ -126,7 +129,7 @@ defmodule HeexFormatter do
   </section>
   ```
 
-  We don't keep multiple lines on texts either:
+  It also won't keep multiple lines between texts:
 
   ```
   <p>
@@ -150,8 +153,7 @@ defmodule HeexFormatter do
   alias HeexFormatter.Algebra
   alias Phoenix.LiveView.HTMLTokenizer
 
-  # Default line length to be used in case nothing is given to the formatter as
-  # options.
+  # Default line length to be used in case nothing is specified in the `.formatter` options.
   @default_line_length 98
 
   @behaviour Mix.Tasks.Format
@@ -182,7 +184,7 @@ defmodule HeexFormatter do
 
   # Tokenize contents using EEx.Tokenizer and Phoenix.Live.HTMLTokenizer respectively.
   #
-  # Given the following contents:
+  # The following content:
   #
   # "<section>\n  <p><%= user.name ></p>\n  <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>\n</section>\n"
   #
@@ -206,8 +208,8 @@ defmodule HeexFormatter do
   #   {:tag_close, "section", %{column: 1, line: 2}}
   # ]
   defp tokenize(contents) do
-    # EEx.tokenize/2 has been introduced in Elixir 1.14. Remove this whe
-    # we are not support early versions.
+    # EEx.tokenize/2 was introduced in Elixir 1.14.
+    # TODO: Remove this when we no longer support earlier versions.
     {:ok, eex_nodes} =
       if Code.ensure_loaded?(EEx) && function_exported?(EEx, :tokenize, 2) do
         EEx.tokenize(contents)
@@ -236,7 +238,7 @@ defmodule HeexFormatter do
     acc
   end
 
-  # Build an HTML Tree according to the given tokens from `Tokenizer.tokenize/1`
+  # Build an HTML Tree according to the tokens from the EEx and HTML tokenizers.
   #
   # This is a recursive algorithm that will build an HTML tree from a flat list of
   # tokens. For instance, given this input:
@@ -261,10 +263,10 @@ defmodule HeexFormatter do
   #   {:tag_block, "div", [], [{:tag_block, "h1", [], [text: "World"]}]}
   # ]
   #
-  # Note that a `tag_block` has been created so that its forth argument is a list
+  # Note that a `tag_block` has been created so that its fourth argument is a list of
   # its nested content.
   #
-  # ### How does this algorithm works?
+  # ### How does this algorithm work?
   #
   # As this is a recursive algorithm, it starts with an empty buffer and an empty
   # stack. Each will be accumulated in the buffer until it finds a `{:tag_open, ..., ...}`.
@@ -286,12 +288,12 @@ defmodule HeexFormatter do
   #   end
   #   ```
   #
-  # Here we build the `tag_block` with the accumulated buffer putting the buffer accumulated before
-  # the tag open (upper_buffer) on the top.
+  # Here we build the `tag_block` with the accumulated buffer, placing the buffer accumulated
+  # before the tag open (upper_buffer) on top.
   #
-  # We apply the same logic for `eex` expressions. But different from `tag_open`
-  # and `tag_close`, there we have `start_expr` and `end_expr` plus `middle_expr.
-  # The only real different is that for `eex` we also need to buil a `middle_buffer`.
+  # We apply the same logic for `eex` expressions but, instead of `tag_open` and `tag_close`, here
+  # we have `start_expr` and `end_expr` plus `middle_expr`. The only real difference is that for
+  # `eex` we also need to build a `middle_buffer`.
   #
   # So given this eex input:
   #
@@ -309,7 +311,7 @@ defmodule HeexFormatter do
   # ]
   # ```
   #
-  # That will be the output:
+  # The output will be:
   #
   # ```elixir
   # [
@@ -427,8 +429,8 @@ defmodule HeexFormatter do
   defp count_newlines_until_text(_, counter),
     do: counter
 
-  # This is because LV Tokenizer does tell us if that is a inline comment and,
-  # we need to know that in order to handle this.
+  # LV Tokenizer doesn't tell us when it is an inline comment and we need to know that in order
+  # to handle this.
   defp inline_comment?(text) do
     trimmed_text = String.trim(text)
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")

@@ -14,10 +14,10 @@ defmodule HeexFormatter.Algebra do
 
   @languages ~w(style script)
 
-  # The formatter has three modes:
+  # The formatter has two modes:
   #
   # * :normal
-  # * :preserve - for <pre>, <script>, <style> and comment tags
+  # * :preserve - for preserving text in <pre>, <script>, <style> and HTML Comment tags
   #
   def build(tree, opts) when is_list(tree) do
     tree
