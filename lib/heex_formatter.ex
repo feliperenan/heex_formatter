@@ -206,7 +206,15 @@ defmodule HeexFormatter do
   #   {:tag_close, "section", %{column: 1, line: 2}}
   # ]
   defp tokenize(contents) do
-    {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 0, %{indentation: 0, trim: false})
+    # EEx.tokenize/2 has been introduced in Elixir 1.14. Remove this whe
+    # we are not support early versions.
+    {:ok, eex_nodes} =
+      if Code.ensure_loaded?(EEx) && function_exported?(EEx, :tokenize, 2) do
+        EEx.tokenize(contents)
+      else
+        EEx.Tokenizer.tokenize(contents, 1, 0, %{indentation: 0, trim: false})
+      end
+
     {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
     HTMLTokenizer.finalize(tokens, "nofile", cont)
   end
