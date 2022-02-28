@@ -12,6 +12,12 @@ defmodule HeexFormatter.Algebra do
   mark meter noscript object output picture progress q ruby s samp select slot
   small span strong sub sup svg template textarea time u tt var video wbr)
 
+  # The formatter has three modes:
+  #
+  # * :normal
+  # * :preserve - for <pre> and comment tags
+  # * :language - for <style> and <script> tags
+
   def build(tree, opts) when is_list(tree) do
     tree
     |> block_to_algebra(%{mode: :normal, opts: opts})
@@ -20,7 +26,7 @@ defmodule HeexFormatter.Algebra do
 
   defp block_to_algebra([], _opts), do: empty()
 
-  defp block_to_algebra(block, %{mode: :pre} = context) do
+  defp block_to_algebra(block, %{mode: :preserve} = context) do
     block
     |> Enum.reduce(empty(), fn node, doc ->
       {_type, next_doc} = to_algebra(node, context)
@@ -87,12 +93,12 @@ defmodule HeexFormatter.Algebra do
   defp text_ends_with_space?(_node), do: false
 
   defp to_algebra({:html_comment, block}, context) do
-    children = block_to_algebra(block, %{context | mode: :comment})
+    children = block_to_algebra(block, %{context | mode: :preserve})
     {:block, group(nest(children, :reset))}
   end
 
   defp to_algebra({:tag_block, "pre", attrs, block}, context) do
-    children = block_to_algebra(block, %{context | mode: :pre})
+    children = block_to_algebra(block, %{context | mode: :preserve})
 
     tag =
       concat([
@@ -107,8 +113,8 @@ defmodule HeexFormatter.Algebra do
     {:block, tag}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block}, %{mode: :pre} = context) do
-    children = block_to_algebra(block, %{context | mode: :pre})
+  defp to_algebra({:tag_block, name, attrs, block}, %{mode: :preserve} = context) do
+    children = block_to_algebra(block, context)
 
     {:inline,
      concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
@@ -149,8 +155,7 @@ defmodule HeexFormatter.Algebra do
   end
 
   # Handle EEX blocks within `pre` tag
-  defp to_algebra({:eex_block, expr, block}, %{mode: mode} = context)
-       when mode in ~w(pre comment)a do
+  defp to_algebra({:eex_block, expr, block}, %{mode: :preserve} = context) do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
         children = block_to_algebra(block, context)
@@ -178,9 +183,8 @@ defmodule HeexFormatter.Algebra do
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
-  # Handle Text within <pre> tag.
-  defp to_algebra({:text, text, _meta}, %{mode: mode})
-       when is_binary(text) and mode in ~w(pre comment)a do
+  # Handle Text within <pre>/comment tags.
+  defp to_algebra({:text, text, _meta}, %{mode: :preserve}) when is_binary(text) do
     {:inline,
      text
      |> String.split(["\r\n", "\n"])
@@ -188,9 +192,8 @@ defmodule HeexFormatter.Algebra do
      |> concat()}
   end
 
-  # Handle Text within <script> tag.
-  defp to_algebra({:text, text, _meta}, %{mode: mode})
-       when is_binary(text) and mode in ~w(script style)a do
+  # Handle Text within <script>/<style> tag.
+  defp to_algebra({:text, text, _meta}, %{mode: :language}) when is_binary(text) do
     # start with all lines
     lines = String.split(text, ["\r\n", "\n"])
 
@@ -257,6 +260,9 @@ defmodule HeexFormatter.Algebra do
   # Final clause: single line
   defp text_to_algebra([], _, [doc, _line]),
     do: doc
+
+  defp text_to_algebra([], _, []),
+    do: empty()
 
   # Final clause: multiple lines
   defp text_to_algebra([], _, acc),
@@ -381,8 +387,8 @@ defmodule HeexFormatter.Algebra do
   end
 
   defp set_context(context, tag_name) do
-    if tag_name in ~w(script style) and context.mode != :pre do
-      %{context | mode: String.to_atom(tag_name)}
+    if tag_name in ~w(script style) and context.mode == :normal do
+      %{context | mode: :language}
     else
       context
     end
