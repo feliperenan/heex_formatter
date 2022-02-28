@@ -895,6 +895,17 @@ defmodule HeexFormatterTest do
     """)
   end
 
+  test "format <pre> tag with EEx" do
+    assert_formatter_doesnt_change("""
+    <pre>
+      :root {
+        <%= 2 + 2 %>
+        <%= 2 + 2 %>
+      }
+    </pre>
+    """)
+  end
+
   test "format label block correctly" do
     input = """
     <%= label @f, :email_address, class: "text-gray font-medium" do %> Email Address
@@ -1016,6 +1027,17 @@ defmodule HeexFormatterTest do
     """
 
     assert_formatter_output(input, expected)
+  end
+
+  test "format style tag with EEx" do
+    assert_formatter_doesnt_change("""
+    <style>
+      :root {
+        <%= 2 + 2 %>
+        <%= 2 + 2 %>
+      }
+    </style>
+    """)
   end
 
   test "handle HTML comments but doens't format it" do

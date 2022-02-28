@@ -12,12 +12,13 @@ defmodule HeexFormatter.Algebra do
   mark meter noscript object output picture progress q ruby s samp select slot
   small span strong sub sup svg template textarea time u tt var video wbr)
 
+  @languages ~w(style script)
+
   # The formatter has three modes:
   #
   # * :normal
-  # * :preserve - for <pre> and comment tags
-  # * :language - for <style> and <script> tags
-
+  # * :preserve - for <pre>, <script>, <style> and comment tags
+  #
   def build(tree, opts) when is_list(tree) do
     tree
     |> block_to_algebra(%{mode: :normal, opts: opts})
@@ -32,6 +33,7 @@ defmodule HeexFormatter.Algebra do
       {_type, next_doc} = to_algebra(node, context)
       concat(doc, next_doc)
     end)
+    |> force_unfit()
     |> group()
   end
 
@@ -51,7 +53,6 @@ defmodule HeexFormatter.Algebra do
         prev_type == :inline and next_type == :inline ->
           on_break =
             if next_doc != empty() and
-                 context.mode == :normal and
                  (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
               " "
             else
@@ -120,8 +121,54 @@ defmodule HeexFormatter.Algebra do
      concat(["<#{name}", build_attrs(attrs, "", context.opts), ">", children, "</#{name}>"])}
   end
 
+  defp to_algebra({:tag_block, name, attrs, block}, context) when name in @languages do
+    children = block_to_algebra(block, %{context | mode: :preserve})
+
+    # Convert the whole block to text as there are no
+    # tags inside script/style, only text and EEx blocks.
+    lines =
+      children
+      |> Inspect.Algebra.format(:infinity)
+      |> IO.iodata_to_binary()
+      |> String.split(["\r\n", "\n"])
+
+    indentation =
+      lines
+      |> Enum.map(&count_indentation(&1, 0))
+      |> Enum.min(fn -> :infinity end)
+      |> case do
+        :infinity -> 0
+        min -> min
+      end
+
+    doc =
+      case lines do
+        [] ->
+          empty()
+
+        _ ->
+          lines
+          |> trim_new_lines()
+          |> Enum.map(&remove_indentation(&1, indentation))
+          |> text_to_algebra(0, [])
+          |> then(&nest(concat(line(), &1), 2))
+      end
+
+    group =
+      concat([
+        "<#{name}",
+        build_attrs(attrs, "", context.opts),
+        ">",
+        doc,
+        line(),
+        "</#{name}>"
+      ])
+      |> group()
+
+    {:block, group}
+  end
+
   defp to_algebra({:tag_block, name, attrs, block}, context) do
-    context = set_context(context, name)
     {block, force_newline?} = trim_block_newlines(block)
 
     children =
@@ -183,42 +230,12 @@ defmodule HeexFormatter.Algebra do
     {:inline, concat(["<%#{opt} ", doc, " %>"])}
   end
 
-  # Handle Text within <pre>/comment tags.
+  # Handle text within <pre>/<script>/<style>/comment tags.
   defp to_algebra({:text, text, _meta}, %{mode: :preserve}) when is_binary(text) do
-    {:inline,
-     text
-     |> String.split(["\r\n", "\n"])
-     |> Enum.map_intersperse(line(), &string/1)
-     |> concat()}
+    {:inline, string(text)}
   end
 
-  # Handle Text within <script>/<style> tag.
-  defp to_algebra({:text, text, _meta}, %{mode: :language}) when is_binary(text) do
-    # start with all lines
-    lines = String.split(text, ["\r\n", "\n"])
-
-    # the first line does not count for indentation purposes:
-    # <script>var foo = bar
-    # then get the minimum indentation value
-    indentation =
-      lines
-      |> Enum.drop(1)
-      |> Enum.map(&count_indentation(&1, 0))
-      |> Enum.min(fn -> :infinity end)
-      |> case do
-        :infinity -> 0
-        min -> min
-      end
-
-    {:inline,
-     lines
-     |> trim_new_lines()
-     |> Enum.map(&remove_indentation(&1, indentation))
-     |> text_to_algebra(0, [])
-     |> force_unfit()}
-  end
-
-  # Handle Text within other tags.
+  # Handle text within other tags.
   defp to_algebra({:text, text, _meta}, _context) when is_binary(text) do
     case classify_leading(text) do
       :spaces ->
@@ -384,13 +401,5 @@ defmodule HeexFormatter.Algebra do
     |> Enum.reverse()
     |> Enum.drop_while(&(String.trim_leading(&1) == ""))
     |> Enum.reverse()
-  end
-
-  defp set_context(context, tag_name) do
-    if tag_name in ~w(script style) and context.mode == :normal do
-      %{context | mode: :language}
-    else
-      context
-    end
   end
 end
