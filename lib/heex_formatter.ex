@@ -207,31 +207,45 @@ defmodule HeexFormatter do
   #   {:text, "\n", %{column_end: 1, line_end: 2}},
   #   {:tag_close, "section", %{column: 1, line: 2}}
   # ]
-  defp tokenize(contents) do
-    # EEx.tokenize/2 was introduced in Elixir 1.14.
-    # TODO: Remove this when we no longer support earlier versions.
-    {:ok, eex_nodes} =
-      if Code.ensure_loaded?(EEx) && function_exported?(EEx, :tokenize, 2) do
-        EEx.tokenize(contents)
-      else
-        EEx.Tokenizer.tokenize(contents, 1, 0, %{indentation: 0, trim: false})
-      end
-
-    {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
-    HTMLTokenizer.finalize(tokens, "nofile", cont)
-  end
-
-  defp do_tokenize({:text, _line, _column, text}, {tokens, cont}) do
-    text
-    |> List.to_string()
-    |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
-  end
-
+  #
+  # EEx.tokenize/2 was introduced in Elixir 1.14.
+  # TODO: Remove this when we no longer support earlier versions.
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
+  if Code.ensure_loaded?(EEx) && function_exported?(EEx, :tokenize, 2) do
+    defp tokenize(contents) do
+      {:ok, eex_nodes} = EEx.tokenize(contents)
+      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
+      HTMLTokenizer.finalize(tokens, "nofile", cont)
+    end
 
-  defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
-    meta = %{opt: opt, line: line, column: column}
-    {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
+    defp do_tokenize({:text, text, _meta}, {tokens, cont}) do
+      text
+      |> List.to_string()
+      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
+    end
+
+    defp do_tokenize({type, opt, expr, %{column: column, line: line}}, {tokens, cont})
+         when type in @eex_expr do
+      meta = %{opt: opt, line: line, column: column}
+      {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
+    end
+  else
+    defp tokenize(contents) do
+      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 0, %{indentation: 0, trim: false})
+      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
+      HTMLTokenizer.finalize(tokens, "nofile", cont)
+    end
+
+    defp do_tokenize({:text, _line, _column, text}, {tokens, cont}) do
+      text
+      |> List.to_string()
+      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
+    end
+
+    defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
+      meta = %{opt: opt, line: line, column: column}
+      {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
+    end
   end
 
   defp do_tokenize(_node, acc) do
