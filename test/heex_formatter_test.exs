@@ -1139,6 +1139,34 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
+  test "does not keep empty lines on script and styles tags" do
+    input = """
+    <script>
+
+    </script>
+    """
+
+    expected = """
+    <script>
+    </script>
+    """
+
+    assert_formatter_output(input, expected)
+
+    input = """
+    <style>
+
+    </style>
+    """
+
+    expected = """
+    <style>
+    </style>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
   # TODO: Remove this `if` after Elixir versions before than 1.14 are no
   # longer supported.
   if function_exported?(EEx, :tokenize, 2) do
