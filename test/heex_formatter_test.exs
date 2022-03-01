@@ -1139,25 +1139,29 @@ defmodule HeexFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  test "handle EEx comments" do
-    assert_formatter_doesnt_change("""
-    <div>
-      <%!-- some --%>
-      <%!-- comment --%>
-      <%!--
-        <div>
-          <%= @user.name %>
-        </div>
-      --%>
-    </div>
-    """)
+  # TODO: Remove this `if` after Elixir versions before than 1.14 are no
+  # longer supported.
+  if function_exported?(EEx, :tokenize, 2) do
+    test "handle EEx comments" do
+      assert_formatter_doesnt_change("""
+      <div>
+        <%!-- some --%>
+        <%!-- comment --%>
+        <%!--
+          <div>
+            <%= @user.name %>
+          </div>
+        --%>
+      </div>
+      """)
 
-    assert_formatter_doesnt_change("""
-    <div>
-      <%= # some %>
-      <%= # comment %>
-      <%= # lines %>
-    </div>
-    """)
+      assert_formatter_doesnt_change("""
+      <div>
+        <%= # some %>
+        <%= # comment %>
+        <%= # lines %>
+      </div>
+      """)
+    end
   end
 end
