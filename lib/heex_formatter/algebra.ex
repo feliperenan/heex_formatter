@@ -225,6 +225,10 @@ defmodule HeexFormatter.Algebra do
     {:block, group(concat("<%= #{expr} %>", doc))}
   end
 
+  defp to_algebra({:eex_comment, text}, _context) do
+    {:inline, concat(["<%!--", text, "--%>"])}
+  end
+
   defp to_algebra({:eex, text, %{opt: opt} = meta}, context) do
     doc = expr_to_code_algebra(text, meta, context.opts)
     {:inline, concat(["<%#{opt} ", doc, " %>"])}

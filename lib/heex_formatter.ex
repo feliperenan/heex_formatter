@@ -224,6 +224,10 @@ defmodule HeexFormatter do
       |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
     end
 
+    defp do_tokenize({:comment, text, meta}, {tokens, cont}) do
+      {[{:eex_comment, List.to_string(text), meta} | tokens], cont}
+    end
+
     defp do_tokenize({type, opt, expr, %{column: column, line: line}}, {tokens, cont})
          when type in @eex_expr do
       meta = %{opt: opt, line: line, column: column}
@@ -375,6 +379,10 @@ defmodule HeexFormatter do
       meta = %{newlines: count_newlines_until_text(text, 0)}
       to_tree(tokens, [{:text, text, meta} | buffer], stack)
     end
+  end
+
+  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack) do
+    to_tree(tokens, [{:eex_comment, text} | buffer], stack)
   end
 
   defp to_tree([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do

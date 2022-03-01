@@ -1138,4 +1138,18 @@ defmodule HeexFormatterTest do
 
     assert_formatter_output(input, expected)
   end
+
+  test "handle EEx comments" do
+    assert_formatter_doesnt_change("""
+    <div>
+      <%!-- some --%>
+      <%!-- comment --%>
+      <%!--
+        <div>
+          <%= @user.name %>
+        </div>
+      --%>
+    </div>
+    """)
+  end
 end
