@@ -1151,5 +1151,13 @@ defmodule HeexFormatterTest do
       --%>
     </div>
     """)
+
+    assert_formatter_doesnt_change("""
+    <div>
+      <%= # some %>
+      <%= # comment %>
+      <%= # lines %>
+    </div>
+    """)
   end
 end

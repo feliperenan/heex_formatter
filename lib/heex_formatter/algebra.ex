@@ -352,9 +352,8 @@ defmodule HeexFormatter.Algebra do
       column: meta.column
     ]
 
-    expr
-    |> Code.string_to_quoted!(string_to_quoted_opts)
-    |> Code.quoted_to_algebra(Keyword.merge(opts, escape: false))
+    {quoted, comments} = Code.string_to_quoted_with_comments!(expr, string_to_quoted_opts)
+    Code.quoted_to_algebra(quoted, Keyword.merge(opts, escape: false, comments: comments))
   end
 
   def classify_leading(text), do: classify_leading(text, :spaces)
