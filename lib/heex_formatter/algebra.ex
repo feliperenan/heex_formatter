@@ -130,13 +130,8 @@ defmodule HeexFormatter.Algebra do
       children
       |> Inspect.Algebra.format(:infinity)
       |> IO.iodata_to_binary()
-
-    lines =
-      if String.trim_leading(lines) == "" do
-        []
-      else
-        String.split(lines, ["\r\n", "\n"])
-      end
+      |> String.split(["\r\n", "\n"])
+      |> trim_new_lines()
 
     indentation =
       lines
@@ -154,7 +149,6 @@ defmodule HeexFormatter.Algebra do
 
         _ ->
           lines
-          |> trim_new_lines()
           |> Enum.map(&remove_indentation(&1, indentation))
           |> text_to_algebra(0, [])
           |> then(&nest(concat(line(), &1), 2))
