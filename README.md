@@ -4,8 +4,6 @@
 
 A code formatter for Heex templates.
 
-:warning: This project is still in the alpha stage. There are several cases yet to be handled.
-
 ![Example animation](examples/example.gif)
 
 ## Pre-requisites
