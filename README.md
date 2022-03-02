@@ -1,5 +1,7 @@
 # HeexFormatter
 
+⚠️ This formatter is now part of Phoenix Live View and it will be mantained there.
+
 [![ElixirCI](https://github.com/feliperenan/heex_formatter/actions/workflows/elixir.yml/badge.svg)](https://github.com/feliperenan/heex_formatter/actions/workflows/elixir.yml)
 
 A code formatter for Heex templates.
